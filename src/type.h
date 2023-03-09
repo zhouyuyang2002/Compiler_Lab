@@ -87,7 +87,7 @@ class BlockAST: public BaseAST{
             cout << "} ";
         }
         void DumpIR() const override{
-            cout << "\%entry" << endl;
+            cout << "\%entry:" << endl;
             stmt -> DumpIR();
         }
 };
