@@ -8,6 +8,7 @@ docker run -it --rm -v C:\Users\10679\Documents\GitHub\Compiler_Lab:/root/Lab ma
 
 make
 build/compiler -koopa hello.c -o hello.koopa
+build/compiler -riscv hello.c -o hello.koopa
 
 
 ### Compile Koopa IR
