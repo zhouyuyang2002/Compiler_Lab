@@ -2,7 +2,13 @@
 
 ### Docker
 
-docker run -it --rm -v /Documents/GitHub/Compiler_Lab:/root/Lab maxxing/compiler-dev bash
+docker run -it --rm -v C:\Users\10679\Documents\GitHub\Compiler_Lab:/root/Lab maxxing/compiler-dev bash
+
+### Build & Test
+
+make
+build/compiler -koopa hello.c -o hello.koopa
+
 
 ### Compile Koopa IR
 
