@@ -13,7 +13,7 @@ bool is_reg(const std::string &loc){
         return false;
     if (loc == "x0")
         return true;
-    if (loc[0] == 'x' && loc[1] >= '0' && loc[1] <= '6')
+    if (loc[0] == 't' && loc[1] >= '0' && loc[1] <= '6')
         return true;
     if (loc[0] == 'a' && loc[1] >= '0' && loc[1] <= '7')
         return true;
@@ -27,8 +27,8 @@ static int reg_num = 0;
 string alloc_reg(){
     int val = reg_num ++;
     if (val <= 6)
-        return "a" + to_string(val);
-    return "x" + to_string(val - 7);
+        return "t" + to_string(val);
+    return "a" + to_string(val - 7);
 }
 
 string realloc_reg(const std::string &src, const std::string &dst){

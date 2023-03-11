@@ -18,7 +18,7 @@ void parse(const koopa_raw_integer_t &integer);
 
 void parse(const koopa_raw_program_t program){
     cout << "  .text" << endl;
-    cout << "  .globl" << endl;
+    cout << "  .globl main" << endl;
     parse(program.values);
     parse(program.funcs);
 }
@@ -43,7 +43,7 @@ void parse(const koopa_raw_slice_t &slice) {
 }
 
 void parse(const koopa_raw_function_t &func) {
-    cout << string(func -> name) << ":" << endl;
+    cout << string((const char*)(&func -> name[1])) << ":" << endl;
     parse(func -> bbs);
 }
 
@@ -59,7 +59,7 @@ string parse(const koopa_raw_value_t &value) {
         case KOOPA_RVT_RETURN:
             parse(kind.data.ret);
             return "??? Return";
-            // Should Not be used
+            // the register name of this one should not be used
         case KOOPA_RVT_INTEGER:
             if (kind.data.integer.value == 0)
                 set_value_reg(&(kind.data.integer), string("x0"));
@@ -138,34 +138,44 @@ string parse(const koopa_raw_binary_t &ret){
     switch (ret.op){
         case KOOPA_RBO_NOT_EQ:
         case KOOPA_RBO_EQ:
-            cur = alloc_reg();
             lhs_reg = parse(ret.lhs);
             rhs_reg = parse(ret.rhs);
+            if (ret.lhs->kind.tag == KOOPA_RVT_INTEGER && lhs_reg != string("x0"))
+                cur = lhs_reg;
+            else if (ret.rhs->kind.tag == KOOPA_RVT_INTEGER && rhs_reg != string("x0"))
+                cur = rhs_reg;
+            else cur = alloc_reg();
             cout << "  xor   " << cur << ", " << lhs_reg << ", " << rhs_reg << endl;
             if (ret.op == KOOPA_RBO_NOT_EQ)
-                cout << "  sneq  " << cur << ", " << cur << endl;
+                cout << "  snez  " << cur << ", " << cur << endl;
             if (ret.op == KOOPA_RBO_EQ)
                 cout << "  seqz  " << cur << ", " << cur << endl;
             return cur;
         case KOOPA_RBO_GT:
         case KOOPA_RBO_LE:
-            cur = alloc_reg();
             lhs_reg = parse(ret.lhs);
             rhs_reg = parse(ret.rhs);
-            cout << "  sub   " << cur << ", " << lhs_reg << ", " << rhs_reg << endl;
-            cout << "  sgt   " << cur << ", " << cur << endl;
+            if (ret.lhs->kind.tag == KOOPA_RVT_INTEGER && lhs_reg != string("x0"))
+                cur = lhs_reg;
+            else if (ret.rhs->kind.tag == KOOPA_RVT_INTEGER && rhs_reg != string("x0"))
+                cur = rhs_reg;
+            else cur = alloc_reg();
+            cout << "  sgt   " << cur << ", " << lhs_reg << ", " << rhs_reg << endl;
             if (ret.op == KOOPA_RBO_LE)
-                cout << "  sneq  " << cur << ", " << cur << endl;
+                cout << "  seqz  " << cur << ", " << cur << endl;
             return cur;
         case KOOPA_RBO_LT:
         case KOOPA_RBO_GE:
-            cur = alloc_reg();
             lhs_reg = parse(ret.lhs);
             rhs_reg = parse(ret.rhs);
-            cout << "  sub   " << cur << ", " << lhs_reg << ", " << rhs_reg << endl;
-            cout << "  slt   " << cur << ", " << cur << endl;
-            if (ret.op == KOOPA_RBO_LE)
-                cout << "  sneq  " << cur << ", " << cur << endl;
+            if (ret.lhs->kind.tag == KOOPA_RVT_INTEGER && lhs_reg != string("x0"))
+                cur = lhs_reg;
+            else if (ret.rhs->kind.tag == KOOPA_RVT_INTEGER && rhs_reg != string("x0"))
+                cur = rhs_reg;
+            else cur = alloc_reg();
+            cout << "  slt   " << cur << ", " << lhs_reg << ", " << rhs_reg << endl;
+            if (ret.op == KOOPA_RBO_GE)
+                cout << "  seqz  " << cur << ", " << cur << endl;
             return cur;
         case KOOPA_RBO_ADD:
         case KOOPA_RBO_SUB:
@@ -174,9 +184,13 @@ string parse(const koopa_raw_binary_t &ret){
         case KOOPA_RBO_MOD:
         case KOOPA_RBO_AND:
         case KOOPA_RBO_OR:
-            cur = alloc_reg();
             lhs_reg = parse(ret.lhs);
             rhs_reg = parse(ret.rhs);
+            if (ret.lhs->kind.tag == KOOPA_RVT_INTEGER && lhs_reg != string("x0"))
+                cur = lhs_reg;
+            else if (ret.rhs->kind.tag == KOOPA_RVT_INTEGER && rhs_reg != string("x0"))
+                cur = rhs_reg;
+            else cur = alloc_reg();
             if (ret.op == KOOPA_RBO_ADD)
                 cout << "  add   " << cur << ", " << lhs_reg << ", " << rhs_reg << endl;
             if (ret.op == KOOPA_RBO_SUB)

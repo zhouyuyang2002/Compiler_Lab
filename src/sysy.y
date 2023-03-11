@@ -202,6 +202,7 @@ LAndExp
     auto ast = new LAndExpAST2();
     ast -> l_and_exp = unique_ptr<BaseAST>($1);
     ast -> eq_exp = unique_ptr<BaseAST>($3);
+    exp_num += 2;
     ast -> exp_id = exp_num++;
     $$ = ast;
   }
@@ -215,6 +216,7 @@ LOrExp
     auto ast = new LOrExpAST2();
     ast -> l_or_exp = unique_ptr<BaseAST>($1);
     ast -> l_and_exp = unique_ptr<BaseAST>($3);
+    exp_num += 2;
     ast -> exp_id = exp_num++;
     $$ = ast;
   }

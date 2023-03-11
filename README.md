@@ -10,6 +10,11 @@ make
 build/compiler -koopa hello.c -o hello.koopa
 build/compiler -riscv hello.c -o hello.koopa
 
+### Autotest
+
+docker run -it --rm -v C:\Users\10679\Documents\GitHub\Compiler_Lab:/root/compiler maxxing/compiler-dev autotest -koopa -s lv3 /root/compiler
+docker run -it --rm -v C:\Users\10679\Documents\GitHub\Compiler_Lab:/root/compiler maxxing/compiler-dev autotest -riscv -s lv3 /root/compiler
+
 
 ### Compile Koopa IR
 

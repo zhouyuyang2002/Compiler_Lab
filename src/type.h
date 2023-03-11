@@ -377,8 +377,9 @@ class LAndExpAST2: public BaseAST{
         void DumpIR() const override{
             l_and_exp -> DumpIR();
             eq_exp -> DumpIR();
-            cout << "  %" << exp_id << " = and " << l_and_exp -> ExpVal() << ", " << eq_exp->ExpVal() << endl;
-            
+            cout << "  %" << exp_id - 2 << " = ne " << l_and_exp -> ExpVal() << ", " << 0 << endl;
+            cout << "  %" << exp_id - 1 << " = ne " << eq_exp -> ExpVal() << ", " << 0 << endl;
+            cout << "  %" << exp_id - 0 << " = and %" <<  exp_id - 2 << ", %" << exp_id - 1 << endl;
         }
         string ExpVal() const override{
             assert(exp_id != -1);
@@ -408,7 +409,9 @@ class LOrExpAST2: public BaseAST{
         void DumpIR() const override{
             l_or_exp -> DumpIR();
             l_and_exp -> DumpIR();
-            cout << "  %" << exp_id << " = or " << l_or_exp -> ExpVal() << ", " << l_and_exp->ExpVal() << endl;
+            cout << "  %" << exp_id - 2 << " = ne " << l_or_exp -> ExpVal() << ", " << 0 << endl;
+            cout << "  %" << exp_id - 1 << " = ne " << l_and_exp -> ExpVal() << ", " << 0 << endl;
+            cout << "  %" << exp_id - 0 << " = or %" <<  exp_id - 2 << ", %" << exp_id - 1 << endl;
         }
         string ExpVal() const override{
             assert(exp_id != -1);
