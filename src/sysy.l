@@ -46,6 +46,9 @@ Hexadecimal   0[xX][0-9a-fA-F]+
 "int"           { return INT; }
 "const"         { return CONST; }
 "return"        { return RETURN; }
+"while"         { return WHILE; }
+"break"         { return BREAK; }
+"continue"      { return CONTINUE; }
 
 "=="            { return EQ; }
 "!="            { return NEQ; }

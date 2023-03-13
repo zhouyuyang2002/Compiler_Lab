@@ -8,7 +8,10 @@ Stmt          ::= LVal "=" Exp ";"
                 | [Exp] ";"
                 | Block
                 | "if" "(" Exp ")" Stmt ["else" Stmt]
-                | "return" [Exp] ";";
+                | "return" [Exp] ";"
+                | "while" "(" Exp ")" Stmt
+                | "continue" ";"
+                | "break" ";";
 
 
 Decl          ::= ConstDecl | VarDecl; 
