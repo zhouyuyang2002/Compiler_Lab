@@ -20,6 +20,8 @@ string parse(const koopa_raw_value_t &value);
 string parse(const koopa_raw_load_t &load);
 void parse(const koopa_raw_return_t &ret);
 void parse(const koopa_raw_store_t &store);
+void parse(const koopa_raw_branch_t &branch);
+void parse(const koopa_raw_jump_t &jump);
 string parse(const koopa_raw_binary_t &binary);
 void parse(const koopa_raw_integer_t &integer);
 
@@ -66,7 +68,10 @@ void parse(const koopa_raw_function_t &func) {
 }
 
 void parse(const koopa_raw_basic_block_t &bb) {
+    string name = string((const char*)(&bb -> name[1]));
+    cout << name << ":" << endl;
     parse(bb -> insts);
+    //cout << "basic block with name (" << name << ") finished" << endl;
 }
 
 string parse(const koopa_raw_value_t &value) {
@@ -74,12 +79,15 @@ string parse(const koopa_raw_value_t &value) {
     const auto &kind = value->kind;
     string cur;
     string addr, name;
+    // cout << (&kind) << endl;
     switch (kind.tag) {
         case KOOPA_RVT_RETURN:
+            // cout << "ret " << &(kind) << endl;
             parse(kind.data.ret);
             return "??? Return";
             // the register name of this one should not be used
         case KOOPA_RVT_INTEGER:
+            // cout << "integer " << &(kind) << endl;
             if (kind.data.integer.value == 0)
                 set_value_reg(&(kind), string("x0"));
             else if (is_value_reg_set(&(kind)));
@@ -105,6 +113,7 @@ string parse(const koopa_raw_value_t &value) {
             cout << "??? unknown type: RVT_BLOCK_ARG_REF" << endl;
             break;
         case KOOPA_RVT_ALLOC:
+            // cout << "alloc " << &(kind) << endl;
             if (is_value_stack_set(&(kind))){
                 addr = get_value_stack(&(kind));
                 return addr;
@@ -118,6 +127,7 @@ string parse(const koopa_raw_value_t &value) {
             cout << "??? unknown type: RVT_GLOBAL_ALLOC" << endl;
             break;
         case KOOPA_RVT_LOAD:
+            // cout << "load " << &(kind) << endl;
             if (is_value_stack_set(&(kind))){
                 addr = get_value_stack(&(kind));
                 cur = alloc_reg();
@@ -131,6 +141,7 @@ string parse(const koopa_raw_value_t &value) {
             }
             break;
         case KOOPA_RVT_STORE:
+            // cout << "store " << &(kind) << endl;
             parse(kind.data.store);
             return "??? RVT STORE";
         case KOOPA_RVT_GET_PTR:
@@ -140,7 +151,7 @@ string parse(const koopa_raw_value_t &value) {
             cout << "??? unknown type: RVT_GET_ELEM_PTR" << endl;
             break;
         case KOOPA_RVT_BINARY:
-            //cout << "bin_addr " << &(kind) << endl;
+            // cout << "bin_addr " << &(kind) << endl;
             if (is_value_stack_set(&(kind))){
                 // value usage
                 cur = alloc_reg();
@@ -158,11 +169,13 @@ string parse(const koopa_raw_value_t &value) {
                 return "??? Initial Binary";
             }
         case KOOPA_RVT_BRANCH:
-            cout << "??? unknown type: RVT_BRANCH" << endl;
-            break;
+            // cout << "branch " << &(kind) << endl;
+            parse(kind.data.branch);
+            return "??? Initial Branch";
         case KOOPA_RVT_JUMP:
-            cout << "??? unknown type: RVT_JUMP" << endl;
-            break;
+            // cout << "jump " << &(kind) << endl;
+            parse(kind.data.jump);
+            return "??? Initial Jump";
         case KOOPA_RVT_CALL:
             cout << "??? unknown type: RVT_CALL" << endl;
             break;
@@ -193,6 +206,17 @@ void parse(const koopa_raw_store_t &store){
     string dest = get_value_stack(&(store.dest->kind));
     cout << "  sw    " << cur << ", " << dest << endl;
 }
+
+void parse(const koopa_raw_branch_t &branch){
+    string cond = parse(branch.cond);
+    cout << "  bnez  " << cond << ", " << (string)((const char*)&(branch.true_bb->name[1])) << endl;
+    cout << "  j     " << (string)((const char*)&(branch.false_bb->name[1])) << endl;
+}
+
+void parse(const koopa_raw_jump_t &jump){
+    cout << "  j     " << (string)((const char*)&(jump.target->name[1])) << endl;
+}
+
 string parse(const koopa_raw_binary_t &ret){
 
     string cur, lhs_reg, rhs_reg;

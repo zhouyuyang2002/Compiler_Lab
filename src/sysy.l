@@ -41,6 +41,8 @@ Hexadecimal   0[xX][0-9a-fA-F]+
 {LineComment}   {}
 {MLineComment}  {}
 
+"if"            { return IF; }
+"else"          { return ELSE; }
 "int"           { return INT; }
 "const"         { return CONST; }
 "return"        { return RETURN; }

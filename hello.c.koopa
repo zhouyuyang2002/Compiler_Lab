@@ -1,23 +1,54 @@
 fun @main(): i32 {
-%entry:
-  @y_1 = alloc i32
-  %3 = mul 2, 3
-  store %3, @y_1
-  @z_1 = alloc i32
-  @y_2 = alloc i32
-  %6 = mul 2, 5
-  store %6, @y_2
-  %9 = load @y_2
-  %12 = mul %9, 2
-  store %12, @z_1
-  %14 = load @y_2
-  %17 = mul %14, 2
-  @w_1 = alloc i32
-  %19 = load @y_1
-  %21 = load @z_1
-  %22 = add %19, %21
-  store %22, @w_1
-  %24 = load @w_1
-  ret %24
+%entry_main:
+  @a_1 = alloc i32
+  store 1, @a_1
+  @b_1 = alloc i32
+  store 0, @b_1
+  @c_1 = alloc i32
+  store 5, @c_1
+  %1 = load @a_1
+  @br0 = alloc i32
+  br %1, %then_exp0, %else_exp0
+%then_exp0:
+  store 1, @br0
+  jump %endif_exp0
+%else_exp0:
+  %3 = load @b_1
+  %4 = ne %3, 0
+  store %4, @br0
+  jump %endif_exp0
+%endif_exp0:
+  %5 = load @br0
+  br %5, %then3, %endif3
+%then3:
+  %7 = load @a_1
+  @br1 = alloc i32
+  br %7, %then_exp1, %else_exp1
+%then_exp1:
+  %9 = load @b_1
+  %10 = ne %9, 0
+  store %10, @br1
+  jump %endif_exp1
+%else_exp1:
+  store 0, @br1
+  jump %endif_exp1
+%endif_exp1:
+  %11 = load @br1
+  br %11, %then2, %else2
+%then2:
+  %14 = load @c_1
+  %15 = mul %14, 233
+  store %15, @c_1
+  jump %endif2
+%else2:
+  %17 = load @c_1
+  %18 = mul %17, 666
+  ret %18
+%endif2:
+  jump %endif3
+%endif3:
+  %20 = load @c_1
+  %21 = div 19260817, %20
+  ret %21
 }
 
