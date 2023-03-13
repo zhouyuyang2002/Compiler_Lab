@@ -19,6 +19,7 @@ using namespace std;
 
 static int exp_num = 0;
 static int var_num = 0;
+static int br_num = 0;
 %}
 
 %parse-param { std::unique_ptr<BaseAST> &ast }
@@ -35,12 +36,12 @@ static int var_num = 0;
 
 
 %token INT RETURN LAND LOR
-%token EQ NEQ LE GE CONST
+%token EQ NEQ LE GE CONST IF ELSE
 %token <str_val> IDENT
 %token <int_val> INT_CONST 
 %type <ast_val> FuncDef FuncType Block BlockItem BlockItems Stmt Number
 %type <ast_val> Decl ConstDecl ConstDef ConstDefs ConstInitVal LVal ConstExp
-%type <ast_val> VarDecl VarDefs VarDef InitVal BType
+%type <ast_val> VarDecl VarDefs VarDef InitVal BType IfStmt
 %type <ast_val> Exp PrimaryExp UnaryExp MulExp AddExp
 %type <ast_val> LOrExp LAndExp RelExp EqExp
 %type <chr_val> UnaryOp AddOp MulOp
@@ -138,6 +139,28 @@ Stmt
   Block {
     auto ast = new StmtAST4();
     ast -> block = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }|
+  IfStmt {
+    auto ast = new StmtAST5();
+    ast -> if_stmt = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+
+IfStmt :
+  IF '(' Exp ')' Stmt {
+    auto ast = new IfStmtAST1();
+    ast -> exp = unique_ptr<BaseAST>($3);
+    ast -> then_stmt = unique_ptr<BaseAST>($5);
+    ast -> br_id = br_num++;
+    $$ = ast;
+  }|
+  IF '(' Exp ')' Stmt ELSE Stmt{
+    auto ast = new IfStmtAST2();
+    ast -> exp = unique_ptr<BaseAST>($3);
+    ast -> then_stmt = unique_ptr<BaseAST>($5);
+    ast -> else_stmt = unique_ptr<BaseAST>($7);
+    ast -> br_id = br_num++;
     $$ = ast;
   }
 
@@ -379,8 +402,9 @@ LAndExp
     auto ast = new LAndExpAST2();
     ast -> l_and_exp = unique_ptr<BaseAST>($1);
     ast -> eq_exp = unique_ptr<BaseAST>($3);
-    exp_num += 2;
+    exp_num ++;
     ast -> exp_id = exp_num++;
+    ast -> br_id = br_num++;
     $$ = ast;
   }
 
@@ -393,8 +417,9 @@ LOrExp
     auto ast = new LOrExpAST2();
     ast -> l_or_exp = unique_ptr<BaseAST>($1);
     ast -> l_and_exp = unique_ptr<BaseAST>($3);
-    exp_num += 2;
+    exp_num ++;
     ast -> exp_id = exp_num++;
+    ast -> br_id = br_num++;
     $$ = ast;
   }
 

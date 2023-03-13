@@ -12,6 +12,7 @@
 #include <algorithm>
 
 #include "symbol.h"
+#include "block.h"
 
 using namespace std;
 
@@ -50,11 +51,10 @@ class FuncDefAST: public BaseAST{
             cout << "fun @" << ident << "(): ";
             func_type -> DumpIR();
             cout << " {" << endl;
-            cout << "%entry:" << endl;
-            //alloc_block();
+            cout << "%entry_" << ident << ":" << endl;
+            alloc_block();
             block -> DumpIR();
-            //assert(block_stack() -> ret);
-            //remove_block();
+            remove_block();
             cout << "}" << endl;
         }
 };
@@ -100,6 +100,7 @@ class BlockItemAST: public BaseAST{
     public:
         std::unique_ptr<BaseAST> decl_or_stmt;
         void DumpIR() const override{
+            if (!block_back().fin)
             decl_or_stmt -> DumpIR();
         }
 };
@@ -127,6 +128,7 @@ class StmtAST2: public BaseAST{
         void DumpIR() const override{
             exp -> DumpIR();
             cout << "  ret " << exp -> ExpId() << endl;
+            block_back().fin = true;
         }
 };
 
@@ -141,11 +143,79 @@ class StmtAST3: public BaseAST{
 };
 
 class StmtAST4: public BaseAST{
-    /*Stmt      ::= [Exp] ";"*/
+    /*Stmt      ::= Block ";"*/
     public:
         std::unique_ptr<BaseAST> block;
         void DumpIR() const override{
             block -> DumpIR();
+        }
+};
+
+class StmtAST5: public BaseAST{
+    /*Stmt      ::= IfStmt ";"*/
+    public:
+        std::unique_ptr<BaseAST> if_stmt;
+        void DumpIR() const override{
+            if_stmt -> DumpIR();
+        }
+};
+
+class IfStmtAST1: public BaseAST{
+    /*Stmt      ::="if" "(" Exp ")" Stmt*/
+    public:
+        int br_id;
+        std::unique_ptr<BaseAST> exp;
+        std::unique_ptr<BaseAST> then_stmt;
+        void DumpIR() const override{
+            exp -> DumpIR();
+            string cur = exp -> ExpId();
+            cout << "  br " << cur << ", %then" + to_string(br_id) << ", %endif" + to_string(br_id) << endl;
+            block_back().fin = true;
+            remove_block();
+            alloc_block();
+            cout << "%then" + to_string(br_id) + ":" << endl;
+            then_stmt -> DumpIR();
+            if (!block_back().fin){
+                block_back().fin = true;
+                cout << "  jump %endif" + to_string(br_id) << endl;
+            }
+            remove_block();
+            alloc_block();
+            cout << "%endif" + to_string(br_id) + ":" << endl;
+        }
+};
+
+class IfStmtAST2: public BaseAST{
+    /*Stmt      ::="if" "(" Exp ")" Stmt*/
+    public:
+        int br_id;
+        std::unique_ptr<BaseAST> exp;
+        std::unique_ptr<BaseAST> then_stmt;
+        std::unique_ptr<BaseAST> else_stmt;
+        void DumpIR() const override{
+            exp -> DumpIR();
+            string cur = exp -> ExpId();
+            cout << "  br " << cur << ", %then" + to_string(br_id) << ", %else" + to_string(br_id) << endl;
+            block_back().fin = true;
+            remove_block();
+            alloc_block();
+            cout << "%then" + to_string(br_id) + ":" << endl;
+            then_stmt -> DumpIR();
+            if (!block_back().fin){
+                block_back().fin = true;
+                cout << "  jump %endif" + to_string(br_id) << endl;
+            }
+            remove_block();
+            alloc_block();
+            cout << "%else" + to_string(br_id) + ":" << endl;
+            else_stmt -> DumpIR();
+            if (!block_back().fin){
+                block_back().fin = true;
+                cout << "  jump %endif" + to_string(br_id) << endl;
+            }
+            remove_block();
+            alloc_block();
+            cout << "%endif" + to_string(br_id) + ":" << endl;
         }
 };
 
@@ -720,12 +790,32 @@ class LAndExpAST2: public BaseAST{
         std::unique_ptr<BaseAST> l_and_exp;
         std::unique_ptr<BaseAST> eq_exp;
         int exp_id;
+        int br_id;
         void DumpIR() const override{
             l_and_exp -> DumpIR();
+            cout << "  @br" << br_id << " = alloc i32" << endl;
+            cout << "  br " << l_and_exp -> ExpId() << ", %then_exp" << br_id << ", %else_exp" << br_id << endl;
+            block_back().fin = true;
+            remove_block();
+            alloc_block();
+            cout << "%then_exp" << br_id << ":" << endl;
             eq_exp -> DumpIR();
-            cout << "  %" << exp_id - 2 << " = ne " << l_and_exp -> ExpId() << ", " << 0 << endl;
             cout << "  %" << exp_id - 1 << " = ne " << eq_exp -> ExpId() << ", " << 0 << endl;
-            cout << "  %" << exp_id - 0 << " = and %" <<  exp_id - 2 << ", %" << exp_id - 1 << endl;
+            cout << "  store %" << exp_id - 1 << ", @br" << br_id << endl;
+            if (!block_back().fin){
+                block_back().fin = true;
+                cout << "  jump %endif_exp" << br_id << endl; 
+            }
+            remove_block();
+            alloc_block();
+            cout << "%else_exp" << br_id << ":" << endl;
+            cout << "  store " << 0 << ", @br" << br_id << endl;
+            cout << "  jump %endif_exp" << br_id << endl; 
+            block_back().fin = true;
+            remove_block();
+            alloc_block();
+            cout << "%endif_exp" << br_id << ":" << endl;
+            cout << "  %" << exp_id << " = load @br" << br_id << endl;
         }
         string ExpId() const override{
             assert(exp_id != -1);
@@ -758,12 +848,32 @@ class LOrExpAST2: public BaseAST{
         std::unique_ptr<BaseAST> l_or_exp;
         std::unique_ptr<BaseAST> l_and_exp;
         int exp_id;
+        int br_id;
         void DumpIR() const override{
             l_or_exp -> DumpIR();
+            cout << "  @br" << br_id << " = alloc i32" << endl;
+            cout << "  br " << l_or_exp -> ExpId() << ", %then_exp" << br_id << ", %else_exp" << br_id << endl;
+            block_back().fin = true;
+            remove_block();
+            alloc_block();
+            cout << "%then_exp" << br_id << ":" << endl;
+            cout << "  store " << 1 << ", @br" << br_id << endl;
+            cout << "  jump %endif_exp" << br_id << endl; 
+            block_back().fin = true;
+            remove_block();
+            alloc_block();
+            cout << "%else_exp" << br_id << ":" << endl;
             l_and_exp -> DumpIR();
-            cout << "  %" << exp_id - 2 << " = ne " << l_or_exp -> ExpId() << ", " << 0 << endl;
             cout << "  %" << exp_id - 1 << " = ne " << l_and_exp -> ExpId() << ", " << 0 << endl;
-            cout << "  %" << exp_id - 0 << " = or %" <<  exp_id - 2 << ", %" << exp_id - 1 << endl;
+            cout << "  store %" << exp_id - 1 << ", @br" << br_id << endl;
+            if (!block_back().fin){
+                block_back().fin = true;
+                cout << "  jump %endif_exp" << br_id << endl; 
+            }
+            remove_block();
+            alloc_block();
+            cout << "%endif_exp" << br_id << ":" << endl;
+            cout << "  %" << exp_id << " = load @br" << br_id << endl;
         }
         string ExpId() const override{
             assert(exp_id != -1);

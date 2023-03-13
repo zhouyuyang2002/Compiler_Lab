@@ -1,11 +1,76 @@
-fun @main(): i32 {
-%entry:
-  @a_1 = alloc i32
-  store 1, @a_1
-  store 2, @a_1
-  @a_2 = alloc i32
-  store 3, @a_2
-  %2 = load @a_1
-  ret %2
-}
-
+  .text
+  .globl main
+main:
+  addi  sp, sp, -48
+entry_main:
+  li    t0, 1
+  sw    t0, 0(sp)
+  sw    x0, 4(sp)
+  li    t0, 5
+  sw    t0, 8(sp)
+  lw    t0, 0(sp)
+  bnez  t0, then_exp0
+  j     else_exp0
+then_exp0:
+  li    t0, 1
+  sw    t0, 12(sp)
+  j     endif_exp0
+else_exp0:
+  lw    t0, 4(sp)
+  xor   t1, t0, x0
+  snez  t1, t1
+  sw    t1, 16(sp)
+  lw    t0, 16(sp)
+  sw    t0, 12(sp)
+  j     endif_exp0
+endif_exp0:
+  lw    t0, 12(sp)
+  bnez  t0, then3
+  j     endif3
+then3:
+  lw    t0, 0(sp)
+  bnez  t0, then_exp1
+  j     else_exp1
+endif3:
+  li    t0, 19260817
+  lw    t1, 8(sp)
+  div   t0, t0, t1
+  sw    t0, 24(sp)
+  lw    t0, 24(sp)
+  xor   a0, t0, x0
+  addi  sp, sp, 48
+  ret
+then_exp1:
+  lw    t0, 4(sp)
+  xor   t1, t0, x0
+  snez  t1, t1
+  sw    t1, 28(sp)
+  lw    t0, 28(sp)
+  sw    t0, 20(sp)
+  j     endif_exp1
+else_exp1:
+  sw    x0, 20(sp)
+  j     endif_exp1
+endif_exp1:
+  lw    t0, 20(sp)
+  bnez  t0, then2
+  j     else2
+then2:
+  lw    t0, 8(sp)
+  li    t1, 233
+  mul   t1, t0, t1
+  sw    t1, 32(sp)
+  lw    t0, 32(sp)
+  sw    t0, 8(sp)
+  j     endif2
+else2:
+  lw    t0, 8(sp)
+  li    t1, 666
+  mul   t1, t0, t1
+  sw    t1, 36(sp)
+  lw    t0, 36(sp)
+  xor   a0, t0, x0
+  addi  sp, sp, 48
+  ret
+endif2:
+  j     endif3
