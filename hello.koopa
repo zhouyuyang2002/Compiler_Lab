@@ -1,5 +1,29 @@
   .text
-  .globl
-@main:
-  li a0 , 0
+  .globl main
+main:
+  addi  sp, sp, -16
+instruction
+  li    t0, 2
+  li    t1, 6
+  add   t0, t0, t1
+  sw    t0, 4(sp)
+instruction
+  lw    t0, 4(sp)
+  sw    t0, 0(sp)
+instruction
+instruction
+instruction
+  li    t0, 100
+  lw    t1, 0(sp)
+  div   t0, t0, t1
+  sw    t0, 12(sp)
+instruction
+  lw    t0, 12(sp)
+  sw    t0, 8(sp)
+instruction
+instruction
+  lw    t0, 8(sp)
+  xor   a0, t0, x0
+  addi  sp, sp, 16
   ret
+instruction

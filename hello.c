@@ -1,7 +1,7 @@
 int main() {
-  // 忽略我的存在
-  /*
-     也忽略我的存在
-  */
-  return 0;
+  const int x = 1 + 1;
+  const int y = 3 * x;
+  int z = x + y;
+  int ans = 100 / z;
+  return ans;
 }

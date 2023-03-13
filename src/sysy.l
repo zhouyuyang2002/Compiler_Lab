@@ -26,6 +26,7 @@ PartB         [*]
 PartC         [^*/]
 MLineComment  "/*"{PartA}*({PartC}{PartA}*|{PartB}|{PartC})*"*/"
 
+
 /* 标识符 */
 Identifier    [a-zA-Z_][a-zA-Z0-9_]*
 
@@ -41,7 +42,15 @@ Hexadecimal   0[xX][0-9a-fA-F]+
 {MLineComment}  {}
 
 "int"           { return INT; }
+"const"         { return CONST; }
 "return"        { return RETURN; }
+
+"=="            { return EQ; }
+"!="            { return NEQ; }
+"<="            { return LE; }
+">="            { return GE; }
+"&&"            { return LAND; }
+"||"            { return LOR; }
 
 {Identifier}    { yylval.str_val = new string(yytext); return IDENT; }
 

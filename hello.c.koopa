@@ -1,5 +1,13 @@
 fun @main(): i32 {
 %entry:
-  ret 0
+  @z = alloc i32
+  %8 = add 2, 6
+  store %8, @z
+  @ans = alloc i32
+  %10 = load @z
+  %11 = div 100, %10
+  store %11, @ans
+  %13 = load @ans
+  ret %13
 }
 
