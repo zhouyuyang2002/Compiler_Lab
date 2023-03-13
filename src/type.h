@@ -50,7 +50,11 @@ class FuncDefAST: public BaseAST{
             cout << "fun @" << ident << "(): ";
             func_type -> DumpIR();
             cout << " {" << endl;
+            cout << "%entry:" << endl;
+            //alloc_block();
             block -> DumpIR();
+            //assert(block_stack() -> ret);
+            //remove_block();
             cout << "}" << endl;
         }
 };
@@ -72,8 +76,11 @@ class BlockAST: public BaseAST{
     public:
         std::unique_ptr<BaseAST> block_items;
         void DumpIR() const override{
-            cout << "%entry:" << endl;
-            block_items -> DumpIR();
+            if (block_items != nullptr){
+                alloc_symbol_space();
+                block_items -> DumpIR();
+                remove_symbol_space();
+            }
         }
 };
 
@@ -120,6 +127,25 @@ class StmtAST2: public BaseAST{
         void DumpIR() const override{
             exp -> DumpIR();
             cout << "  ret " << exp -> ExpId() << endl;
+        }
+};
+
+class StmtAST3: public BaseAST{
+    /*Stmt      ::= [Exp] ";"*/
+    public:
+        std::unique_ptr<BaseAST> exp;
+        void DumpIR() const override{
+            if (exp != nullptr)
+                exp -> DumpIR();
+        }
+};
+
+class StmtAST4: public BaseAST{
+    /*Stmt      ::= [Exp] ";"*/
+    public:
+        std::unique_ptr<BaseAST> block;
+        void DumpIR() const override{
+            block -> DumpIR();
         }
 };
 
@@ -216,11 +242,11 @@ class VarDefAST: public BaseAST{
         std::unique_ptr<BaseAST> init_val;
         void DumpIR() const override{
             set_symbol_var_id(ident, var_id);
-            cout << "  @" << ident << " = alloc i32" << endl;
+            cout << "  @" << get_symbol_name(ident) << " = alloc i32" << endl;
             if (init_val != nullptr){
                 init_val -> DumpIR();
                 string exp_val = init_val -> ExpId();
-                cout << "  store " << exp_val << ", @" << ident << endl;
+                cout << "  store " << exp_val << ", @" << get_symbol_name(ident) << endl;
             }
         }
 };
@@ -253,7 +279,7 @@ class LValAST: public BaseAST{
             if (is_symbol_value_set(ident))
                 return to_string(get_symbol_value(ident));
             if (is_symbol_var_id_set(ident))
-                return "@" + ident;
+                return "@" + get_symbol_name(ident);
             return "??? Bad LVal defination";
         }
         int ExpVal() const override{
