@@ -36,7 +36,8 @@ static int br_num = 0;
 
 
 %token INT RETURN LAND LOR
-%token EQ NEQ LE GE CONST IF ELSE
+%token EQ NEQ LE GE CONST
+%token IF ELSE WHILE BREAK CONTINUE
 %token <str_val> IDENT
 %token <int_val> INT_CONST 
 %type <ast_val> FuncDef FuncType Block BlockItem BlockItems Stmt Number
@@ -144,6 +145,21 @@ Stmt
   IfStmt {
     auto ast = new StmtAST5();
     ast -> if_stmt = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }|
+  WHILE '(' Exp ')' Stmt {
+    auto ast = new StmtAST6();
+    ast -> exp = unique_ptr<BaseAST>($3);
+    ast -> stmt = unique_ptr<BaseAST>($5);
+    ast -> br_id = br_num++;
+    $$ = ast;
+  }|
+  CONTINUE ';' {
+    auto ast = new StmtAST7();
+    $$ = ast;
+  }|
+  BREAK ';' {
+    auto ast = new StmtAST8();
     $$ = ast;
   }
 

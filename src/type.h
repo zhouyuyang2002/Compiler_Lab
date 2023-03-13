@@ -13,6 +13,7 @@
 
 #include "symbol.h"
 #include "block.h"
+#include "loop.h"
 
 using namespace std;
 
@@ -157,6 +158,75 @@ class StmtAST5: public BaseAST{
         std::unique_ptr<BaseAST> if_stmt;
         void DumpIR() const override{
             if_stmt -> DumpIR();
+        }
+};
+
+class StmtAST6: public BaseAST{
+    /*Stmt      ::= "while" "(" Exp ")" Stmt */
+    public:
+        std::unique_ptr<BaseAST> exp;
+        std::unique_ptr<BaseAST> stmt;
+        int br_id;
+        void DumpIR() const override{
+            alloc_loop(br_id);
+            if (!block_back().fin){
+                cout << "  jump " << loop_head_id() << endl;
+                block_back().fin = true;
+            }
+            remove_block();
+
+            alloc_block();
+            cout <<  loop_head_id() << ":" << endl;
+            exp -> DumpIR();
+            string cur = exp -> ExpId();
+            cout << "  br " << cur << ", " <<  loop_body_id() << ", " << loop_end_id() << endl;
+            block_back().fin = true;
+            remove_block();
+
+            alloc_block();
+            cout << loop_body_id() << ":" << endl;
+            stmt -> DumpIR();
+            if (!block_back().fin){
+                cout << "  jump " << loop_head_id() << endl;
+                block_back().fin = true;
+            }
+            remove_block();
+
+            alloc_block();
+            cout << loop_end_id() <<  ":" << endl;
+            remove_loop();
+        }
+};
+
+class StmtAST7: public BaseAST{
+    /*Stmt      ::= "continue" */
+    public:
+        void DumpIR() const override{
+            if (!block_back().fin){
+                cout << "  jump " << loop_head_id() << endl;
+                block_back().fin = true;
+            }
+            remove_block();
+
+            alloc_loop_body();
+            alloc_block();
+            cout << loop_body_id() << ":" << endl;
+        }
+};
+
+class StmtAST8: public BaseAST{
+    /*Stmt      ::= "break" */
+    public:
+        void DumpIR() const override{
+            if (!block_back().fin){
+                cout << "  jump " << loop_end_id() << endl;
+                block_back().fin = true;
+            }
+            remove_block();
+
+            alloc_loop_body();
+            alloc_block();
+            cout << loop_body_id() << ":" << endl;
         }
 };
 
