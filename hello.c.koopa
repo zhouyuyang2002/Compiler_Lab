@@ -1,13 +1,13 @@
 fun @main(): i32 {
 %entry:
-  %0 = or 8, 9
-  %1 = and 7, %0
-  %2 = ne 6, %1
-  %3 = gt 5, %2
-  %4 = lt 4, %3
-  %5 = ge 3, %4
-  %6 = le 2, %5
-  %7 = eq 1, %6
-  ret %7
+  @z = alloc i32
+  %8 = add 2, 6
+  store %8, @z
+  @ans = alloc i32
+  %10 = load @z
+  %11 = div 100, %10
+  store %11, @ans
+  %13 = load @ans
+  ret %13
 }
 

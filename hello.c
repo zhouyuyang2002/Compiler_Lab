@@ -1,3 +1,7 @@
 int main() {
-  return (1 == (2 <= (3 >= (4 < (5 > (6 != (7 && (8 || 9))))))));
+  const int x = 1 + 1;
+  const int y = 3 * x;
+  int z = x + y;
+  int ans = 100 / z;
+  return ans;
 }

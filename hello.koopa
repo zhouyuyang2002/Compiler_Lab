@@ -1,29 +1,29 @@
   .text
-  .globl
-@main:
-  li    a1, 8
-  li    a2, 9
-  or   a0, a1, a2
-  li    a4, 7
-  and   a3, a4, a0
-  li    a6, 6
-  xor   a5, a6, a3
-  sneq  a5, a5
-  li    x1, 5
-  sub   x0, x1, a5
-  sgt   x0, x0
-  li    x3, 4
-  sub   x2, x3, x0
-  slt   x2, x2
-  li    x5, 3
-  sub   x4, x5, x2
-  slt   x4, x4
-  li    x7, 2
-  sub   x6, x7, x4
-  sgt   x6, x6
-  sneq  x6, x6
-  li    x9, 1
-  xor   x8, x9, x6
-  seqz  x8, x8
-  xor   a0, x8, x0
+  .globl main
+main:
+  addi  sp, sp, -16
+instruction
+  li    t0, 2
+  li    t1, 6
+  add   t0, t0, t1
+  sw    t0, 4(sp)
+instruction
+  lw    t0, 4(sp)
+  sw    t0, 0(sp)
+instruction
+instruction
+instruction
+  li    t0, 100
+  lw    t1, 0(sp)
+  div   t0, t0, t1
+  sw    t0, 12(sp)
+instruction
+  lw    t0, 12(sp)
+  sw    t0, 8(sp)
+instruction
+instruction
+  lw    t0, 8(sp)
+  xor   a0, t0, x0
+  addi  sp, sp, 16
   ret
+instruction
