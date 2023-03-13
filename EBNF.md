@@ -5,7 +5,10 @@ FuncType      ::= "int";
 Block         ::= "{" {BlockItem} "}";
 BlockItem     ::= Decl | Stmt; 
 Stmt          ::= LVal "=" Exp ";"
-                | "return" Exp ";";
+                | [Exp] ";"
+                | Block
+                | "return" [Exp] ";";
+
 
 Decl          ::= ConstDecl | VarDecl; 
 ConstDecl     ::= "const" BType ConstDef {"," ConstDef} ";";

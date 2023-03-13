@@ -1,13 +1,23 @@
 fun @main(): i32 {
 %entry:
-  @z = alloc i32
-  %8 = add 2, 6
-  store %8, @z
-  @ans = alloc i32
-  %10 = load @z
-  %11 = div 100, %10
-  store %11, @ans
-  %13 = load @ans
-  ret %13
+  @y_1 = alloc i32
+  %3 = mul 2, 3
+  store %3, @y_1
+  @z_1 = alloc i32
+  @y_2 = alloc i32
+  %6 = mul 2, 5
+  store %6, @y_2
+  %9 = load @y_2
+  %12 = mul %9, 2
+  store %12, @z_1
+  %14 = load @y_2
+  %17 = mul %14, 2
+  @w_1 = alloc i32
+  %19 = load @y_1
+  %21 = load @z_1
+  %22 = add %19, %21
+  store %22, @w_1
+  %24 = load @w_1
+  ret %24
 }
 

@@ -3,11 +3,15 @@
 
 #include <cstring>
 
-void set_symbol_value(std::string name, int value);
-void set_symbol_var_id(std::string name, int var_id);
-bool is_symbol_value_set(std::string name);
-bool is_symbol_var_id_set(std::string name);
-int get_symbol_value(std::string name);
-int get_symbol_var_id(std::string name);
+void alloc_symbol_space();
+void remove_symbol_space();
+int get_symbol_depth(const std::string &name);
+void set_symbol_value(const std::string &name, int value);
+void set_symbol_var_id(const std::string &name, int var_id);
+bool is_symbol_value_set(const std::string &name);
+bool is_symbol_var_id_set(const std::string &name);
+std::string get_symbol_name(const std::string &name);
+int get_symbol_value(const std::string &name);
+int get_symbol_var_id(const std::string &name);
 
 #endif

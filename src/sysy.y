@@ -80,8 +80,12 @@ Block
     auto ast = new BlockAST();
     ast -> block_items = unique_ptr<BaseAST>($2);
     $$ = ast;
+  }|
+  '{' '}' {
+    auto ast = new BlockAST();
+    ast -> block_items = nullptr;
+    $$ = ast;
   }
-  ;
 
 BlockItems
   : BlockItem {
@@ -119,6 +123,21 @@ Stmt
   RETURN Exp ';' {
     auto ast = new StmtAST2();
     ast -> exp = unique_ptr<BaseAST>($2);
+    $$ = ast;
+  }|
+  ';' {
+    auto ast = new StmtAST3();
+    ast -> exp = nullptr;
+    $$ = ast;
+  }|
+  Exp ';' {
+    auto ast = new StmtAST3();
+    ast -> exp = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }|
+  Block {
+    auto ast = new StmtAST4();
+    ast -> block = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
 
