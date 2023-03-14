@@ -1,4 +1,3 @@
-#include "koopa.h"
 #include <set>
 #include <vector>
 #include <cstdio>
@@ -7,17 +6,10 @@
 #include <iostream>
 #include <unordered_map>
 
+#include "koopa.h"
+#include "symbol.h"
+
 using namespace std;
-
-/* 
-  map the result of value(the address of the value in raw program)
-   , to the name of register who save it.
-*/
-
-enum symbol_type_t{
-    SYMBOL_CONST,
-    SYMBOL_VAR
-};
 
 typedef struct symbol_value{
     symbol_type_t type;
@@ -31,6 +23,7 @@ static int depth = -1;
 static int index_num = 0;
 vector<unordered_map<string, symbol_value_t> > symbol_tables;
 unordered_map<string, set<int> > symbol_depth;
+unordered_map<string, func_type_t> symbol_func;
 vector<int> table_index;
 
 void alloc_symbol_space(){
@@ -91,6 +84,10 @@ string get_symbol_name(const string &name){
     return name + "_" + to_string(table_index[var_depth]);
 }
 
+string get_symbol_param_name(const string &name){
+    return name + "_" + to_string(table_index.back()) + "_param"; 
+}
+
 int get_symbol_value(const string &name){
     auto var_depth = get_symbol_depth(name);
     assert(var_depth >= 0 && var_depth <= depth);
@@ -101,4 +98,18 @@ int get_symbol_var_id(const string &name){
     auto var_depth = get_symbol_depth(name);
     assert(var_depth >= 0 && var_depth <= depth);
     return symbol_tables[var_depth][name].var_id;
+}
+
+void set_symbol_func(const string& name, func_type_t f_type){
+    assert(symbol_func.find(name) == symbol_func.end());
+    symbol_func[name] = f_type;
+}
+
+bool is_symbol_func_set(const string& name){
+    return symbol_func.find(name) != symbol_func.end();
+}
+
+func_type_t get_symbol_func(const string& name){
+    assert(is_symbol_func_set(name));
+    return symbol_func[name];
 }

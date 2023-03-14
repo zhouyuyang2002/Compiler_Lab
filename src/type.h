@@ -17,6 +17,7 @@
 
 using namespace std;
 
+static bool is_global_decl = false;
 class BaseAST{
     public:  
         virtual ~BaseAST() = default;
@@ -33,11 +34,47 @@ class BaseAST{
 };
 
 class CompUnitAST: public BaseAST{
-    /*CompUnit  ::= FuncDef;*/
+    /*CompUnit  ::= [CompUnit] FuncDef;*/
     public:
-        std::unique_ptr<BaseAST> func_def;
+        std::unique_ptr<BaseAST> func_defs;
         void DumpIR() const override{
-            func_def -> DumpIR();
+            cout << "decl @getint(): i32" << endl;
+            cout << "decl @getch(): i32" << endl;
+            cout << "decl @getarray(*i32): i32" << endl;
+            cout << "decl @putint(i32)" << endl;
+            cout << "decl @putch(i32)" << endl;
+            cout << "decl @putarray(i32, *i32)" << endl;
+            cout << "decl @starttime()" << endl;
+            cout << "decl @stoptime()" << endl;
+            set_symbol_func("getint", FUNC_INT);
+            set_symbol_func("getch", FUNC_INT);
+            set_symbol_func("getarray", FUNC_INT);
+            set_symbol_func("putint", FUNC_VOID);
+            set_symbol_func("putch", FUNC_VOID);
+            set_symbol_func("putarray", FUNC_INT);
+            set_symbol_func("starttime", FUNC_VOID);
+            set_symbol_func("stoptime", FUNC_VOID);
+            alloc_symbol_space();
+            func_defs -> DumpIR();
+            remove_symbol_space();
+        }
+};
+
+class FuncDefListAST: public BaseAST{
+    public:
+        std::unique_ptr<BaseAST> next;
+        std::unique_ptr<BaseAST> func_def;
+        std::unique_ptr<BaseAST> decl;
+        void DumpIR() const override{
+            if (next != nullptr)
+                next -> DumpIR();
+            if (func_def != nullptr)
+                func_def -> DumpIR();
+            if (decl != nullptr){
+                is_global_decl = true;
+                decl -> DumpIR();
+                is_global_decl = false;
+            }
         }
 };
 
@@ -47,26 +84,103 @@ class FuncDefAST: public BaseAST{
     public:
         std::unique_ptr<BaseAST> func_type;
         std::string ident;
+        std::unique_ptr<BaseAST> func_f_params;
         std::unique_ptr<BaseAST> block;
         void DumpIR() const override{
-            cout << "fun @" << ident << "(): ";
-            func_type -> DumpIR();
-            cout << " {" << endl;
+            if (func_type -> ExpId() == "")
+                set_symbol_func(ident, FUNC_VOID);
+            else
+                set_symbol_func(ident, FUNC_INT);
+            
+            alloc_symbol_space();
+            cout << "fun @" << ident << "(";
+            if (func_f_params != nullptr)
+                cout << func_f_params -> ExpId();
+            cout << ")";
+            if (func_type -> ExpId() != "")
+                cout << ": i32";
+            cout << "{" << endl;
+
             cout << "%entry_" << ident << ":" << endl;
+            if (func_f_params != nullptr)
+                func_f_params -> DumpIR();
             alloc_block();
             block -> DumpIR();
+            if (!block_back().fin){
+                assert(func_type->ExpId() == ""); //void type
+                cout << "  ret" << endl;
+                block_back().fin = true;
+            }
             remove_block();
             cout << "}" << endl;
+            remove_symbol_space();
         }
 };
 
+class FuncFParamListAST: public BaseAST{
+    /*FuncFParams   ::= FuncFParam {"," FuncFParam};*/
+    public:
+        std::unique_ptr<BaseAST> next;
+        std::unique_ptr<BaseAST> func_f_param;
+        void DumpIR() const override{
+            if (next != nullptr)
+                next -> DumpIR();
+            func_f_param -> DumpIR();
+        }
+        
+        string ExpId() const override{
+            if (next != nullptr)
+                return next -> ExpId() + ", " + func_f_param -> ExpId();
+            return func_f_param -> ExpId();
+        }
+
+};
+
+class FuncFParamAST : public BaseAST{
+    /*FuncFParam    ::= BType IDENT;*/
+    public:
+        std::unique_ptr<BaseAST> type;
+        std::string ident;
+        int var_id;
+        void DumpIR() const override{
+            set_symbol_var_id(ident, var_id);
+            string var_name = get_symbol_name(ident);
+            string param_name = get_symbol_param_name(ident);
+            cout << "  @" << var_name << " = alloc i32" << endl;
+            cout << "  store %" << param_name << ", @" << var_name << endl;
+        }
+
+        
+        string ExpId() const override{
+            return "%" + get_symbol_param_name(ident) + ": " + type -> ExpId();
+        }
+};
+
+class FuncRParamListAST: public BaseAST{
+    /*FuncRParams   ::= Exp {"," Exp};*/
+    public:
+        std::unique_ptr<BaseAST> next;
+        std::unique_ptr<BaseAST> exp;
+        void DumpIR() const override{
+            if (next != nullptr)
+                next -> DumpIR();
+            exp -> DumpIR();
+        }
+        string ExpId() const override{
+            if (next != nullptr)
+                return next -> ExpId() + ", " + exp -> ExpId();
+            return exp -> ExpId();
+        }
+};
 
 class FuncTypeAST: public BaseAST{
-    /*FuncDef   ::= "int"*/
+    /*FuncType   ::= "void" */
     public:
         std::string type;
         void DumpIR() const override{
-            cout << "i32";
+        }
+        string ExpId() const override{
+            return "";
         }
 };
 
@@ -127,8 +241,12 @@ class StmtAST2: public BaseAST{
     public:
         std::unique_ptr<BaseAST> exp;
         void DumpIR() const override{
-            exp -> DumpIR();
-            cout << "  ret " << exp -> ExpId() << endl;
+            if (exp != nullptr){
+                exp -> DumpIR();
+                cout << "  ret " << exp -> ExpId() << endl;
+            }
+            else
+                cout << "  ret" << endl;
             block_back().fin = true;
         }
 };
@@ -176,6 +294,7 @@ class StmtAST6: public BaseAST{
             remove_block();
 
             alloc_block();
+            alloc_symbol_space();
             cout <<  loop_head_id() << ":" << endl;
             exp -> DumpIR();
             string cur = exp -> ExpId();
@@ -191,7 +310,7 @@ class StmtAST6: public BaseAST{
                 block_back().fin = true;
             }
             remove_block();
-
+            remove_symbol_space();
             alloc_block();
             cout << loop_end_id() <<  ":" << endl;
             remove_loop();
@@ -243,6 +362,7 @@ class IfStmtAST1: public BaseAST{
             block_back().fin = true;
             remove_block();
             alloc_block();
+            alloc_symbol_space();
             cout << "%then" + to_string(br_id) + ":" << endl;
             then_stmt -> DumpIR();
             if (!block_back().fin){
@@ -250,6 +370,7 @@ class IfStmtAST1: public BaseAST{
                 cout << "  jump %endif" + to_string(br_id) << endl;
             }
             remove_block();
+            remove_symbol_space();
             alloc_block();
             cout << "%endif" + to_string(br_id) + ":" << endl;
         }
@@ -269,6 +390,7 @@ class IfStmtAST2: public BaseAST{
             block_back().fin = true;
             remove_block();
             alloc_block();
+            alloc_symbol_space();
             cout << "%then" + to_string(br_id) + ":" << endl;
             then_stmt -> DumpIR();
             if (!block_back().fin){
@@ -276,7 +398,9 @@ class IfStmtAST2: public BaseAST{
                 cout << "  jump %endif" + to_string(br_id) << endl;
             }
             remove_block();
+            remove_symbol_space();
             alloc_block();
+            alloc_symbol_space();
             cout << "%else" + to_string(br_id) + ":" << endl;
             else_stmt -> DumpIR();
             if (!block_back().fin){
@@ -284,6 +408,7 @@ class IfStmtAST2: public BaseAST{
                 cout << "  jump %endif" + to_string(br_id) << endl;
             }
             remove_block();
+            remove_symbol_space();
             alloc_block();
             cout << "%endif" + to_string(br_id) + ":" << endl;
         }
@@ -316,6 +441,10 @@ class BTypeAST: public BaseAST{
         std::string type; /*i32*/
         void DumpIR() const override{
             cout << type;
+        }
+        string ExpId() const override{
+            assert(type == "i32");
+            return type;
         }
 };
 
@@ -381,12 +510,22 @@ class VarDefAST: public BaseAST{
         int var_id;
         std::unique_ptr<BaseAST> init_val;
         void DumpIR() const override{
-            set_symbol_var_id(ident, var_id);
-            cout << "  @" << get_symbol_name(ident) << " = alloc i32" << endl;
-            if (init_val != nullptr){
-                init_val -> DumpIR();
-                string exp_val = init_val -> ExpId();
-                cout << "  store " << exp_val << ", @" << get_symbol_name(ident) << endl;
+            if (!is_global_decl){
+                set_symbol_var_id(ident, var_id);
+                cout << "  @" << get_symbol_name(ident) << " = alloc i32" << endl;
+                if (init_val != nullptr){
+                    init_val -> DumpIR();
+                    string exp_val = init_val -> ExpId();
+                    cout << "  store " << exp_val << ", @" << get_symbol_name(ident) << endl;
+                }
+            }
+            else{
+                set_symbol_var_id(ident, var_id);
+                cout << "global @" << get_symbol_name(ident) << " = alloc i32, ";
+                if (init_val != nullptr)
+                    cout << init_val -> ExpVal() << endl;
+                else
+                    cout << "0" << endl;
             }
         }
 };
@@ -578,6 +717,33 @@ class UnaryExpAST2: public BaseAST{
                     assert(false);
             }
             return -1;
+        }
+};
+
+class UnaryExpAST3: public BaseAST{
+    /* UnaryExp    ::= IDENT "(" [FuncRParams] ")" */
+    public:
+        std::string ident;
+        std::unique_ptr<BaseAST> func_r_params;
+        int exp_id;
+        void DumpIR() const override{
+            assert(is_symbol_func_set(ident));
+            if (func_r_params != nullptr)
+                func_r_params -> DumpIR();
+            if (get_symbol_func(ident) == FUNC_INT)
+                cout << "  %" << exp_id << " = ";
+            else
+                cout << "  ";
+            if (func_r_params != nullptr)
+                cout << "call @" << ident << "(" << func_r_params -> ExpId() << ")" << endl;
+            else
+                cout << "call @" << ident << "()" << endl;
+        }
+        string ExpId() const override{
+            assert(is_symbol_func_set(ident));
+            assert(get_symbol_func(ident) == FUNC_INT);
+            assert(exp_id != -1);
+            return "%" + to_string(exp_id);
         }
 };
 

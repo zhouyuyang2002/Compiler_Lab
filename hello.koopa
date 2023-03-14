@@ -1,19 +1,52 @@
-fun @main(): i32 {
+decl @getint(): i32
+decl @getch(): i32
+decl @getarray(*i32): i32
+decl @putint(i32)
+decl @putch(i32)
+decl @putarray(i32, *i32)
+decl @starttime()
+decl @stoptime()
+global @x_1 = alloc i32, 233
+fun @gcd(%x_2_param: i32, %y_2_param: i32): i32{
+%entry_gcd:
+  @x_2 = alloc i32
+  store %x_2_param, @x_2
+  @y_2 = alloc i32
+  store %y_2_param, @y_2
+  %1 = load @y_2
+  %2 = eq %1, 0
+  br %2, %then0, %endif0
+%then0:
+  %4 = load @x_2
+  ret %4
+%endif0:
+  %6 = load @y_2
+  %8 = load @x_2
+  %10 = load @y_2
+  %11 = mod %8, %10
+  %12 = call @gcd(%6, %11)
+  ret %12
+}
+fun @f(): {
+%entry_f:
+  ret
+}
+fun @main(): i32{
 %entry_main:
-  @i_1 = alloc i32
-  store 0, @i_1
-  jump %while_head0
-%while_head0:
-  %1 = load @i_1
-  %2 = lt %1, 10
-  br %2, %while_body0_0, %while_end0
-%while_body0_0:
-  %5 = load @i_1
-  %6 = add %5, 1
-  store %6, @i_1
-  jump %while_head0
-%while_end0:
-  %8 = load @i_1
-  ret %8
+  call @f()
+  @z_7 = alloc i32
+  %14 = call @getint()
+  store %14, @z_7
+  @ans_7 = alloc i32
+  %16 = load @x_1
+  %20 = load @x_1
+  %21 = add 666, %20
+  %23 = load @z_7
+  %24 = add %21, %23
+  %25 = call @gcd(%16, %24)
+  store %25, @ans_7
+  %27 = load @ans_7
+  call @putch(%27)
+  ret 0
 }
 
