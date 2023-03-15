@@ -1,7 +1,7 @@
 CompUnit      ::= [CompUnit] (Decl | FuncDef);
 
-FuncDef       ::= FuncType IDENT "(" [FuncFParams] ")" Block;
-FuncType      ::= "void" | "int";
+FuncDef       ::= [FuncType | BType] IDENT "(" [FuncFParams] ")" Block;
+FuncType      ::= "void";
 FuncFParams   ::= FuncFParam {"," FuncFParam};
 FuncFParam    ::= BType IDENT;
 FuncRParams   ::= Exp {"," Exp};

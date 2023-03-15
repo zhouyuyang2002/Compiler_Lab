@@ -11,6 +11,18 @@ typedef int32_t reg_id_t;
 
 static int stack_top = 0;
 static int stack_size = 0;
+static int param_size = 0;
+
+enum params_t{
+    NO_PARAMS,
+    // not parsing parameters
+    DECL_PARAMS,
+    // parsing parameters for function decl
+    CALL_PARAMS
+    // parsing parameters for function call
+};
+static params_t parse_param_mode = NO_PARAMS;
+static int param_idx;
 
 void parse(const koopa_raw_program_t program);
 void parse(const koopa_raw_slice_t &slice);
@@ -21,18 +33,20 @@ string parse(const koopa_raw_load_t &load);
 void parse(const koopa_raw_return_t &ret);
 void parse(const koopa_raw_store_t &store);
 void parse(const koopa_raw_branch_t &branch);
+void parse(const koopa_raw_call_t &branch);
+void parse(const koopa_raw_global_alloc_t &g_alloc);
 void parse(const koopa_raw_jump_t &jump);
 string parse(const koopa_raw_binary_t &binary);
 void parse(const koopa_raw_integer_t &integer);
 
 void parse(const koopa_raw_program_t program){
-    cout << "  .text" << endl;
-    cout << "  .globl main" << endl;
     parse(program.values);
     parse(program.funcs);
 }
 
 void parse(const koopa_raw_slice_t &slice) {
+    //if (parse_param_mode == CALL_PARAMS)
+    //  cout << "params_num : " << slice.len << endl;
     string temp;
     for (size_t i = 0; i < slice.len; ++i) {
         auto ptr = slice.buffer[i];
@@ -45,9 +59,10 @@ void parse(const koopa_raw_slice_t &slice) {
                 break;
             case KOOPA_RSIK_VALUE:
                 reset_reg();
-                /*called iff an instruction is started */
+                /*called iff an instruction / function param is started */
                 temp = parse(reinterpret_cast<koopa_raw_value_t>(ptr));
-                //cout << "instruction" << endl;
+                //if (parse_param_mode == NO_PARAMS)
+                //    cout << "instruction" << endl;
                 break;
             default:
                 assert(false);
@@ -55,16 +70,31 @@ void parse(const koopa_raw_slice_t &slice) {
     }
 }
 
-void parse(const koopa_raw_function_t &func) {
-    cout << string((const char*)(&func -> name[1])) << ":" << endl;
-    stack_size = parse_stack(func -> bbs);
-    while (stack_size & 3) ++stack_size;
-    stack_top = 0;
-    if (stack_size != 0){
-        cout << "  addi  sp, sp, " << -stack_size * 4 << endl;
+void parse(const koopa_raw_function_t &func){
+    if (func -> bbs.len != 0){
+        /* function */
+        cout << "  .text" << endl;
+        cout << "  .globl " << string((const char*)(&func -> name[1])) << endl;
+        cout << string((const char*)(&func -> name[1])) << ":" << endl;
+        stack_size = parse_stack(func -> bbs);
+        param_size = parse_param(func -> bbs);
+        stack_size += param_size + 1;
+        while (stack_size & 3) ++stack_size;
+        stack_top = param_size;
+        if (stack_size != 0){
+            cout << "  addi  sp, sp, " << -stack_size * 4 << endl;
+        }
+        parse_param_mode = DECL_PARAMS;
+        parse(func -> params);
+        parse_param_mode = NO_PARAMS;
+        if (param_size != 0){
+            //with possible functin call
+            cout << "  sw    ra, " << (stack_size - 1) * 4 << "(sp)" << endl;
+        } 
+        parse(func -> bbs);
+        assert(stack_top <= stack_size);
+        cout << endl;
     }
-    parse(func -> bbs);
-    assert(stack_top <= stack_size);
 }
 
 void parse(const koopa_raw_basic_block_t &bb) {
@@ -87,8 +117,23 @@ string parse(const koopa_raw_value_t &value) {
             return "??? Return";
             // the register name of this one should not be used
         case KOOPA_RVT_INTEGER:
+            if (parse_param_mode == CALL_PARAMS){
+                if (param_idx < 8){
+                    cur = "a" + to_string(param_idx);
+                    cout << "  li    " << cur << ", " << kind.data.integer.value  << endl;
+                    param_idx++;
+                    return "??? bad func params usage: rvt_integer";
+                }
+                else{
+                    cur = alloc_reg();
+                    cout << "  li    " << cur << ", " << kind.data.integer.value << endl;
+                    cout << "  sw    " << cur << ", " << to_string(4 * (param_idx - 8)) << "(sp)" << endl;
+                    param_idx++;
+                    return "??? bad func params usage: rvt_integer";
+                }
+            }
             // cout << "integer " << &(kind) << endl;
-            if (kind.data.integer.value == 0)
+            else if (kind.data.integer.value == 0)
                 set_value_reg(&(kind), string("x0"));
             else if (is_value_reg_set(&(kind)));
             else{
@@ -107,12 +152,43 @@ string parse(const koopa_raw_value_t &value) {
             cout << "??? unknown type: RVT_AGGREGATE" << endl;
             break;
         case KOOPA_RVT_FUNC_ARG_REF:
-            cout << "??? unknown type: RVT_FUNC_ARG_REF" << endl;
+            if (is_value_stack_set((&kind))){
+                // pre func: return the location of the args
+                addr = get_value_stack((&kind));
+                if (is_reg(addr))
+                    return addr;
+                    /* params save in register */
+                else{
+                    cur = alloc_reg();
+                    cout << "  lw    " << cur << ", " << addr << endl;
+                    return cur;
+                    /* params save in stack */
+                }
+            }
+            else{
+                int index = kind.data.func_arg_ref.index;
+                // func decl: map the location with the args
+                if (index <= 7){
+                    cur = "a" + to_string(index);
+                    set_value_stack(&(kind), cur);
+                    /* params save in register */
+                }
+                else{
+                    cur = to_string(4 * (stack_size + index - 8)) + "(sp)";
+                    /* shift = stack_size + one return addr + number of params*/
+                    set_value_stack(&(kind), cur);
+                    /* params save in stack */
+                }
+                return "??? Initial RVT_FUNC_ARG_REF";
+            }
             break;
         case KOOPA_RVT_BLOCK_ARG_REF:
             cout << "??? unknown type: RVT_BLOCK_ARG_REF" << endl;
             break;
         case KOOPA_RVT_ALLOC:
+        
+            if (parse_param_mode == CALL_PARAMS)
+                cout << "param_alloc" << endl;
             // cout << "alloc " << &(kind) << endl;
             if (is_value_stack_set(&(kind))){
                 addr = get_value_stack(&(kind));
@@ -124,19 +200,62 @@ string parse(const koopa_raw_value_t &value) {
                 return "??? Initial Alloc";
             }
         case KOOPA_RVT_GLOBAL_ALLOC:
-            cout << "??? unknown type: RVT_GLOBAL_ALLOC" << endl;
+            //cout << "global_alloc " << &(kind) << " " << value -> name << endl;
+            if (is_value_data_set(&(kind))){
+                addr = get_value_data(&(kind));
+                return addr;
+            }
+            else{
+                cout << "  .data" << endl;
+                cout << "  .globl " << string((const char*) &(value -> name[1])) << endl;
+                cout << string((const char*) &(value -> name[1])) << ":" << endl;
+                parse(kind.data.global_alloc);
+                set_value_data(&(kind), string(value -> name));
+            }
             break;
         case KOOPA_RVT_LOAD:
-            // cout << "load " << &(kind) << endl;
-            if (is_value_stack_set(&(kind))){
+            if (parse_param_mode == CALL_PARAMS){
+                if (param_idx < 8)
+                    cur = "a" + to_string(param_idx);
+                else
+                    cur = alloc_reg();
+                if (is_value_stack_set(&(kind))){
+                    addr = get_value_stack(&(kind));
+                    cout << "  lw    " << cur << ", " << addr << endl;
+                }
+                else if (is_value_data_set(&(kind))){
+                    addr = get_value_data(&(kind));
+                    addr = string((const char*)&addr[1]);
+                    cout << "  la    " << cur << ", " << addr << endl;
+                    cout << "  lw    " << cur << ", 0(" << cur << ")" << endl;
+                }
+                if (param_idx >= 8)
+                    cout << "  sw    " << cur << ", " << to_string(4 * (param_idx - 8)) << "(sp)" << endl;
+                param_idx++;
+                return "??? bad func params usage: rvt_load";
+            }
+            else if (is_value_stack_set(&(kind))){
                 addr = get_value_stack(&(kind));
                 cur = alloc_reg();
                 cout << "  lw    " << cur << ", " << addr << endl;
                 return cur;
             }
+            else if (is_value_data_set(&(kind))){
+                addr = get_value_data(&(kind));
+                addr = string((const char*)&addr[1]);
+                cur = alloc_reg();
+                cout << "  la    " << cur << ", " << addr << endl;
+                cout << "  lw    " << cur << ", 0(" << cur << ")" << endl;
+                return cur;
+            }
             else{
+                assert(parse_param_mode != CALL_PARAMS);
                 addr = parse(kind.data.load);
-                set_value_stack(&(kind), addr);
+                if (addr[0] == '@' || addr[0] == '%')
+                    // global variable
+                    set_value_data(&(kind), addr);
+                else
+                    set_value_stack(&(kind), addr);
                 return "??? Initial Load";
             }
             break;
@@ -151,7 +270,25 @@ string parse(const koopa_raw_value_t &value) {
             cout << "??? unknown type: RVT_GET_ELEM_PTR" << endl;
             break;
         case KOOPA_RVT_BINARY:
-            // cout << "bin_addr " << &(kind) << endl;
+            if (parse_param_mode == CALL_PARAMS){
+                //cout << "param_binary" << endl;
+                assert(is_value_stack_set(&(kind)));
+                if (param_idx < 8){
+                    cur = "a" + to_string(param_idx);
+                    addr = get_value_stack(&(kind));
+                    cout << "  lw    " << cur << ", " << addr << endl;
+                    param_idx++;
+                    return "??? bad func params usage: rvt_binary";
+                }
+                else{
+                    cur = alloc_reg();
+                    addr = get_value_stack(&(kind));
+                    cout << "  lw    " << cur << ", " << addr << endl;
+                    cout << "  sw    " << cur << ", " << to_string(4 * (param_idx - 8)) << "(sp)" << endl;
+                    param_idx++;
+                    return "??? bad func params usage: rvt_binary";
+                }
+            }
             if (is_value_stack_set(&(kind))){
                 // value usage
                 cur = alloc_reg();
@@ -177,8 +314,44 @@ string parse(const koopa_raw_value_t &value) {
             parse(kind.data.jump);
             return "??? Initial Jump";
         case KOOPA_RVT_CALL:
-            cout << "??? unknown type: RVT_CALL" << endl;
-            break;
+            if (parse_param_mode == CALL_PARAMS){
+                assert(is_value_stack_set(&(kind)));
+                if (param_idx < 8){
+                    cur = "a" + to_string(param_idx);
+                    addr = get_value_stack(&(kind));
+                    cout << "  lw    " << cur << ", " << addr << endl;
+                    param_idx++;
+                    return "??? bad func params usage: rvt_call";
+                }
+                else{
+                    cur = alloc_reg();
+                    addr = get_value_stack(&(kind));
+                    cout << "  lw    " << cur << ", " << addr << endl;
+                    cout << "  sw    " << cur << ", " << to_string(4 * (param_idx - 8)) << "(sp)" << endl;
+                    param_idx++;
+                    return "??? bad func params usage: rvt_call";
+                }
+            }
+            if (is_value_stack_set((&kind))){
+                if (kind.data.call.callee -> ty -> tag == KOOPA_RTT_UNIT){
+                    cout << "??? Use the return value of a void function call" << endl;
+                    assert(false);
+                }
+                cur = alloc_reg();
+                addr = get_value_stack((&kind));
+                cout << "  lw    " << cur << ", " << addr << endl;
+                return cur;
+            }
+            parse(kind.data.call);
+            if (kind.data.call.callee -> ty -> data.function.ret -> tag == KOOPA_RTT_INT32){
+                cur = "a0";
+                addr = to_string(4 * (stack_top++)) + "(sp)";
+                cout << "  sw    " << cur << ", " << addr << endl;
+                set_value_stack((&kind), addr);
+            }
+            else
+                set_value_stack((&kind), "???");
+            return "Initial Call";
         default:
             assert(false);
     }
@@ -188,11 +361,16 @@ string parse(const koopa_raw_value_t &value) {
 
 void parse(const koopa_raw_return_t &ret){
     string loc;
-    loc = parse(ret.value);
-    loc = realloc_reg(loc, "a0");
-    if (stack_size != 0){
-        cout << "  addi  sp, sp, " << stack_size * 4 << endl;
+    if (ret.value != NULL){
+        loc = parse(ret.value);
+        loc = realloc_reg(loc, "a0");
     }
+    //cout << param_size << endl;
+    if (param_size != 0)
+        // load return address in function calls
+        cout << "  lw    ra, " << (stack_size - 1) * 4 << "(sp)" << endl;
+    if (stack_size != 0)
+        cout << "  addi  sp, sp, " << stack_size * 4 << endl;
     cout << "  ret" << endl;
 }
 
@@ -202,9 +380,19 @@ string parse(const koopa_raw_load_t &load){
 
 void parse(const koopa_raw_store_t &store){
     string cur = parse(store.value);
-    assert(is_value_stack_set(&(store.dest->kind)));
-    string dest = get_value_stack(&(store.dest->kind));
-    cout << "  sw    " << cur << ", " << dest << endl;
+    if (is_value_stack_set(&(store.dest->kind))){
+        string dest = get_value_stack(&(store.dest->kind));
+        cout << "  sw    " << cur << ", " << dest << endl;
+    }
+    else if (is_value_data_set(&(store.dest->kind))){
+        string addr = get_value_data(&(store.dest->kind));
+        addr = string((const char*)&addr[1]);
+        string temp = alloc_reg();
+        cout << "  la    " << temp << ", " << addr << endl;
+        cout << "  sw    " << cur << ", 0(" << temp << ")" << endl; 
+    }
+    else
+        assert(false);
 }
 
 void parse(const koopa_raw_branch_t &branch){
@@ -215,6 +403,34 @@ void parse(const koopa_raw_branch_t &branch){
 
 void parse(const koopa_raw_jump_t &jump){
     cout << "  j     " << (string)((const char*)&(jump.target->name[1])) << endl;
+}
+
+void parse(const koopa_raw_call_t &call){
+    const auto &func = call.callee;
+    const auto &args = call.args;
+    parse_param_mode = CALL_PARAMS;
+    int cur_stack_top = 0;
+    param_idx = 0;
+    swap(cur_stack_top, stack_top);
+    parse(args);
+    assert(stack_top <= param_size);
+    swap(cur_stack_top, stack_top);
+    parse_param_mode = NO_PARAMS;
+    cout << "  call  " << string((const char*)&(func -> name[1])) << endl;
+}
+
+void parse(const koopa_raw_global_alloc_t &g_alloc){
+    const auto& kind = g_alloc.init -> kind;
+    switch (kind.tag){
+        case KOOPA_RVT_INTEGER:
+            cout << "  .word " << kind.data.integer.value << endl;
+            break;
+        case KOOPA_RVT_ZERO_INIT:
+            cout << "undealed var type: RVT_KOOPA_ZERO_INIT" << endl;
+            break;
+        default:
+            cout << "bad var initial value" << endl;
+    }
 }
 
 string parse(const koopa_raw_binary_t &ret){

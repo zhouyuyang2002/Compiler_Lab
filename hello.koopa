@@ -1,52 +1,93 @@
-decl @getint(): i32
-decl @getch(): i32
-decl @getarray(*i32): i32
-decl @putint(i32)
-decl @putch(i32)
-decl @putarray(i32, *i32)
-decl @starttime()
-decl @stoptime()
-global @x_1 = alloc i32, 233
-fun @gcd(%x_2_param: i32, %y_2_param: i32): i32{
-%entry_gcd:
-  @x_2 = alloc i32
-  store %x_2_param, @x_2
-  @y_2 = alloc i32
-  store %y_2_param, @y_2
-  %1 = load @y_2
-  %2 = eq %1, 0
-  br %2, %then0, %endif0
-%then0:
-  %4 = load @x_2
-  ret %4
-%endif0:
-  %6 = load @y_2
-  %8 = load @x_2
-  %10 = load @y_2
-  %11 = mod %8, %10
-  %12 = call @gcd(%6, %11)
-  ret %12
-}
-fun @f(): {
-%entry_f:
+  .data
+  .globl x_1
+x_1:
+  .word 233
+  .text
+  .globl gcd
+gcd:
+  addi  sp, sp, -32
+  sw    ra, 28(sp)
+entry_gcd:
+  sw    a0, 4(sp)
+  sw    a1, 8(sp)
+  lw    t0, 8(sp)
+  xor   t1, t0, x0
+  seqz  t1, t1
+  sw    t1, 12(sp)
+  lw    t0, 12(sp)
+  bnez  t0, then0
+  j     endif0
+then0:
+  lw    t0, 4(sp)
+  xor   a0, t0, x0
+  lw    ra, 28(sp)
+  addi  sp, sp, 32
   ret
-}
-fun @main(): i32{
-%entry_main:
-  call @f()
-  @z_7 = alloc i32
-  %14 = call @getint()
-  store %14, @z_7
-  @ans_7 = alloc i32
-  %16 = load @x_1
-  %20 = load @x_1
-  %21 = add 666, %20
-  %23 = load @z_7
-  %24 = add %21, %23
-  %25 = call @gcd(%16, %24)
-  store %25, @ans_7
-  %27 = load @ans_7
-  call @putch(%27)
-  ret 0
-}
+endif0:
+  lw    t0, 4(sp)
+  lw    t1, 8(sp)
+  rem   t2, t0, t1
+  sw    t2, 16(sp)
+  lw    a0, 8(sp)
+  lw    a1, 16(sp)
+  call  gcd
+  sw    a0, 20(sp)
+  lw    t0, 20(sp)
+  xor   a0, t0, x0
+  lw    ra, 28(sp)
+  addi  sp, sp, 32
+  ret
+
+  .text
+  .globl f
+f:
+  addi  sp, sp, -16
+entry_f:
+  addi  sp, sp, 16
+  ret
+
+  .text
+  .globl main
+main:
+  addi  sp, sp, -48
+  sw    ra, 44(sp)
+entry_main:
+  call  f
+  call  getint
+  sw    a0, 8(sp)
+  lw    t0, 8(sp)
+  sw    t0, 4(sp)
+  la    t0, x_1
+  lw    t0, 0(t0)
+  li    t1, 75924
+  mul   t1, t0, t1
+  sw    t1, 12(sp)
+  lw    t0, 12(sp)
+  lw    t1, 4(sp)
+  add   t2, t0, t1
+  sw    t2, 16(sp)
+  lw    a0, 16(sp)
+  li    a1, 2048
+  call  gcd
+  sw    a0, 20(sp)
+  lw    a0, 20(sp)
+  la    a1, x_1
+  lw    a1, 0(a1)
+  call  gcd
+  sw    a0, 24(sp)
+  la    t0, x_1
+  lw    t0, 0(t0)
+  lw    t1, 24(sp)
+  add   t2, t0, t1
+  sw    t2, 28(sp)
+  lw    t0, 28(sp)
+  la    t1, x_1
+  sw    t0, 0(t1)
+  la    a0, x_1
+  lw    a0, 0(a0)
+  call  putch
+  xor   a0, x0, x0
+  lw    ra, 44(sp)
+  addi  sp, sp, 48
+  ret
 

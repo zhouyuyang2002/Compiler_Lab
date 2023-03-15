@@ -1,54 +1,54 @@
-fun @main(): i32 {
+decl @getint(): i32
+decl @getch(): i32
+decl @getarray(*i32): i32
+decl @putint(i32)
+decl @putch(i32)
+decl @putarray(i32, *i32)
+decl @starttime()
+decl @stoptime()
+global @x_1 = alloc i32, 233
+fun @gcd(%x_2_param: i32, %y_2_param: i32): i32{
+%entry_gcd:
+  @x_2 = alloc i32
+  store %x_2_param, @x_2
+  @y_2 = alloc i32
+  store %y_2_param, @y_2
+  %4 = load @y_2
+  %5 = eq %4, 0
+  br %5, %then0, %endif0
+%then0:
+  %7 = load @x_2
+  ret %7
+%endif0:
+  %9 = load @y_2
+  %11 = load @x_2
+  %13 = load @y_2
+  %14 = mod %11, %13
+  %15 = call @gcd(%9, %14)
+  ret %15
+}
+fun @f(){
+%entry_f:
+  ret
+}
+fun @main(): i32{
 %entry_main:
-  @a_1 = alloc i32
-  store 1, @a_1
-  @b_1 = alloc i32
-  store 0, @b_1
-  @c_1 = alloc i32
-  store 5, @c_1
-  %1 = load @a_1
-  @br0 = alloc i32
-  br %1, %then_exp0, %else_exp0
-%then_exp0:
-  store 1, @br0
-  jump %endif_exp0
-%else_exp0:
-  %3 = load @b_1
-  %4 = ne %3, 0
-  store %4, @br0
-  jump %endif_exp0
-%endif_exp0:
-  %5 = load @br0
-  br %5, %then3, %endif3
-%then3:
-  %7 = load @a_1
-  @br1 = alloc i32
-  br %7, %then_exp1, %else_exp1
-%then_exp1:
-  %9 = load @b_1
-  %10 = ne %9, 0
-  store %10, @br1
-  jump %endif_exp1
-%else_exp1:
-  store 0, @br1
-  jump %endif_exp1
-%endif_exp1:
-  %11 = load @br1
-  br %11, %then2, %else2
-%then2:
-  %14 = load @c_1
-  %15 = mul %14, 233
-  store %15, @c_1
-  jump %endif2
-%else2:
-  %17 = load @c_1
-  %18 = mul %17, 666
-  ret %18
-%endif2:
-  jump %endif3
-%endif3:
-  %20 = load @c_1
-  %21 = div 19260817, %20
-  ret %21
+  call @f()
+  @z_7 = alloc i32
+  %17 = call @getint()
+  store %17, @z_7
+  %20 = load @x_1
+  %22 = load @x_1
+  %25 = mul %22, 75924
+  %27 = load @z_7
+  %28 = add %25, %27
+  %29 = call @gcd(%28, 2048)
+  %31 = load @x_1
+  %32 = call @gcd(%29, %31)
+  %33 = add %20, %32
+  store %33, @x_1
+  %35 = load @x_1
+  call @putch(%35)
+  ret 0
 }
 
