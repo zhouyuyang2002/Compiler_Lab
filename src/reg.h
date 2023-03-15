@@ -25,10 +25,12 @@ bool is_reg(const std::string &loc){
 register management
 */
 static int reg_num = 0;
+static int param_reg_num = 0;
 
 void reset_reg(){
     reg_num = 0;
 }
+
 string alloc_reg(){
     int val = reg_num ++;
     if (val <= 6)
@@ -71,4 +73,18 @@ bool is_value_stack_set(const void* addr){
 string get_value_stack(const void* addr){
     return map_value_stack[(uint64_t)addr];
 }
+
+unordered_map<uint64_t, string> map_value_data;
+void set_value_data(const void* addr, const string data){
+    map_value_data[(uint64_t)addr] = data;
+}
+
+bool is_value_data_set(const void* addr){
+    return map_value_data.find((uint64_t)addr) != map_value_data.end();
+}
+
+string get_value_data(const void* addr){
+    return map_value_data[(uint64_t)addr];
+}
+
 #endif
