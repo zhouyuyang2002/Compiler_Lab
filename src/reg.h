@@ -37,6 +37,10 @@ string alloc_reg(){
         return "t" + to_string(val);
     return "a" + to_string(val - 7);
 }
+void remove_reg(){
+    -- reg_num;
+}
+
 string realloc_reg(const std::string &src, const std::string &dst){
     if (dst != src)
         cout << "  xor   " << dst << ", " << src << ", x0" << endl;
@@ -87,4 +91,8 @@ string get_value_data(const void* addr){
     return map_value_data[(uint64_t)addr];
 }
 
+bool on_stack(string addr){
+    int len = addr.length();
+    return len >= 4 && addr.substr(len - 4, 4) == "(sp)";
+}
 #endif

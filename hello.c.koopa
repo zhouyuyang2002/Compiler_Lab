@@ -6,49 +6,7 @@ decl @putch(i32)
 decl @putarray(i32, *i32)
 decl @starttime()
 decl @stoptime()
-global @x_1 = alloc i32, 233
-fun @gcd(%x_2_param: i32, %y_2_param: i32): i32{
-%entry_gcd:
-  @x_2 = alloc i32
-  store %x_2_param, @x_2
-  @y_2 = alloc i32
-  store %y_2_param, @y_2
-  %4 = load @y_2
-  %5 = eq %4, 0
-  br %5, %then0, %endif0
-%then0:
-  %7 = load @x_2
-  ret %7
-%endif0:
-  %9 = load @y_2
-  %11 = load @x_2
-  %13 = load @y_2
-  %14 = mod %11, %13
-  %15 = call @gcd(%9, %14)
-  ret %15
-}
-fun @f(){
-%entry_f:
-  ret
-}
 fun @main(): i32{
 %entry_main:
-  call @f()
-  @z_7 = alloc i32
-  %17 = call @getint()
-  store %17, @z_7
-  %20 = load @x_1
-  %22 = load @x_1
-  %25 = mul %22, 75924
-  %27 = load @z_7
-  %28 = add %25, %27
-  %29 = call @gcd(%28, 2048)
-  %31 = load @x_1
-  %32 = call @gcd(%29, %31)
-  %33 = add %20, %32
-  store %33, @x_1
-  %35 = load @x_1
-  call @putch(%35)
-  ret 0
-}
-
+  @a_3 = alloc [i32, 10]
+  store zeroinit, @a_3

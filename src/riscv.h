@@ -37,7 +37,26 @@ void parse(const koopa_raw_call_t &branch);
 void parse(const koopa_raw_global_alloc_t &g_alloc);
 void parse(const koopa_raw_jump_t &jump);
 string parse(const koopa_raw_binary_t &binary);
+string parse(const koopa_raw_get_ptr_t &get_ptr);
+string parse(const koopa_raw_get_elem_ptr_t &get_elem_ptr);
 void parse(const koopa_raw_integer_t &integer);
+
+
+void parse_zeroinit(const string& base, int shift, int len);
+void parse_local_aggr(const koopa_raw_aggregate_t &aggr, 
+                     const koopa_raw_type_t &type,
+                     const string& base,
+                     int shift);
+void parse_local_arr(const koopa_raw_value_t &value, 
+                     const koopa_raw_type_t &type,
+                     const string& base,
+                     int shift);
+void parse_global_aggr(const koopa_raw_aggregate_t &aggr, 
+                      const koopa_raw_type_t &type);
+void parse_global_arr(const koopa_raw_value_t &value, 
+                     const koopa_raw_type_t &type);
+void parse_local_arr(const koopa_raw_store_t &store);
+void parse_global_arr(const koopa_raw_value_t &value);
 
 void parse(const koopa_raw_program_t program){
     parse(program.values);
@@ -60,7 +79,7 @@ void parse(const koopa_raw_slice_t &slice) {
             case KOOPA_RSIK_VALUE:
                 reset_reg();
                 /*called iff an instruction / function param is started */
-                temp = parse(reinterpret_cast<koopa_raw_value_t>(ptr));
+                parse(reinterpret_cast<koopa_raw_value_t>(ptr));
                 //if (parse_param_mode == NO_PARAMS)
                 //    cout << "instruction" << endl;
                 break;
@@ -109,6 +128,8 @@ string parse(const koopa_raw_value_t &value) {
     const auto &kind = value->kind;
     string cur;
     string addr, name;
+    koopa_raw_type_t ptr_type = NULL;
+    int shift;
     // cout << (&kind) << endl;
     switch (kind.tag) {
         case KOOPA_RVT_RETURN:
@@ -186,33 +207,121 @@ string parse(const koopa_raw_value_t &value) {
             cout << "??? unknown type: RVT_BLOCK_ARG_REF" << endl;
             break;
         case KOOPA_RVT_ALLOC:
-        
-            if (parse_param_mode == CALL_PARAMS)
-                cout << "param_alloc" << endl;
-            // cout << "alloc " << &(kind) << endl;
-            if (is_value_stack_set(&(kind))){
-                addr = get_value_stack(&(kind));
-                return addr;
+            if (value -> ty -> tag == KOOPA_RTT_INT32){
+                /*alloc a integer*/
+                if (is_value_stack_set(&(kind))){
+                    addr = get_value_stack(&(kind));
+                    return addr;
+                }
+                else{
+                    addr = to_string(4 * (stack_top++)) + "(sp)";
+                    set_value_stack(&(kind), addr);
+                    return "??? Initial Alloc";
+                }
             }
-            else{
-                addr = to_string(4 * (stack_top++)) + "(sp)";
-                set_value_stack(&(kind), addr);
-                return "??? Initial Alloc";
+            else if (value -> ty -> tag == KOOPA_RTT_POINTER){
+                ptr_type = (koopa_raw_type_t)(value -> ty -> data.pointer.base);
+                if (is_value_stack_set(&(kind))){
+                    addr = get_value_stack(&(kind));
+                    switch (ptr_type -> tag){
+                        case KOOPA_RTT_ARRAY:
+                            cur = alloc_reg();
+                            shift = atoi(addr.substr(0, addr.length() - 4).c_str());
+                            cout << "  addi  " << cur << ", sp, " << shift << endl;
+                            return cur;
+                        case KOOPA_RTT_INT32:
+                        case KOOPA_RTT_POINTER:
+                            return addr;
+                        default:
+                            cout << "bad pointer type" << endl;
+                    }
+                    return addr;
+                }
+                else{
+                    //cout << "Alloc an pointer" << endl;
+                    switch (ptr_type -> tag){
+                        case KOOPA_RTT_ARRAY:
+                            //cout << "Alloc an pointer of array" << endl;
+                            addr = to_string(4 * stack_top) + "(sp)";
+                            set_value_stack(&(kind), addr);
+                            stack_top += parse_stack(ptr_type);
+                            return "??? Initial Alloc Pointer of Array";
+                        case KOOPA_RTT_INT32:
+                        case KOOPA_RTT_POINTER:
+                            //cout << "Alloc an pointer of int/pointer" << endl;
+                            addr = to_string(4 * (stack_top++)) + "(sp)";
+                            set_value_stack(&(kind), addr);
+                            return "??? Initial Alloc Pointer of Int/Pointer";
+                        default:
+                            cout << "bad pointer type" << endl;
+                    }
+                    return "??? undealed alloc pointer type";
+                }
             }
+            else
+                cout << "??? undealed alloc type" << endl;
+            return "??? unknown alloc type";
         case KOOPA_RVT_GLOBAL_ALLOC:
-            //cout << "global_alloc " << &(kind) << " " << value -> name << endl;
-            if (is_value_data_set(&(kind))){
-                addr = get_value_data(&(kind));
-                return addr;
+            if (value -> ty -> tag == KOOPA_RTT_INT32){
+                // alloc an integer
+                //cout << "global_alloc " << &(kind) << " " << value -> name << endl;
+                if (is_value_data_set(&(kind))){
+                    addr = get_value_data(&(kind));
+                    return addr;
+                }
+                else{
+                    cout << "  .data" << endl;
+                    cout << "  .globl " << string((const char*) &(value -> name[1])) << endl;
+                    cout << string((const char*) &(value -> name[1])) << ":" << endl;
+                    set_value_data(&(kind), string(value -> name));
+                    parse(kind.data.global_alloc);
+                    //set_value_type(&(kind), VAR_TYPE, value -> ty);
+                    return "??? Initial Global Alloc";
+                }
             }
-            else{
-                cout << "  .data" << endl;
-                cout << "  .globl " << string((const char*) &(value -> name[1])) << endl;
-                cout << string((const char*) &(value -> name[1])) << ":" << endl;
-                parse(kind.data.global_alloc);
-                set_value_data(&(kind), string(value -> name));
+            else if (value -> ty -> tag == KOOPA_RTT_POINTER){
+                ptr_type = (koopa_raw_type_t)(value -> ty -> data.pointer.base);
+                if (is_value_data_set(&(kind))){
+                    addr = get_value_data(&(kind));
+                    switch (ptr_type -> tag){
+                        case KOOPA_RTT_ARRAY:
+                            cur = alloc_reg();
+                            addr = string((const char*)&addr[1]);
+                            cout << "  la    " << cur << ", " << addr << endl;
+                            return cur;
+                        case KOOPA_RTT_INT32:
+                        case KOOPA_RTT_POINTER:
+                            return addr;
+                        default:
+                            cout << "bad pointer type(global)" << endl;
+                    }
+                    return addr;
+                }
+                else{
+                    //cout << "Alloc an pointer(global)" << endl;
+                    cout << "  .data" << endl;
+                    cout << "  .globl " << string((const char*) &(value -> name[1])) << endl;
+                    cout << string((const char*) &(value -> name[1])) << ":" << endl;
+                    set_value_data(&(kind), string(value -> name));
+                    switch (ptr_type -> tag){
+                        case KOOPA_RTT_ARRAY:
+                            //cout << "Alloc an pointer of array(global)" << endl;
+                            parse_global_arr(value);
+                            return "??? Initial Alloc Pointer of Array(global)";
+                        case KOOPA_RTT_INT32:
+                        case KOOPA_RTT_POINTER:
+                            //cout << "Alloc an pointer of int/pointer(global)" << endl;
+                            parse(kind.data.global_alloc);
+                            return "??? Initial Alloc Pointer of Int/Pointer(global)";
+                        default:
+                            cout << "bad pointer type(global)" << endl;
+                    }
+                    return "??? undealed alloc pointer type(global)";
+                }
             }
-            break;
+            else
+                cout << "??? WTF" << endl;
+            return "??? unknown global alloc type";
         case KOOPA_RVT_LOAD:
             if (parse_param_mode == CALL_PARAMS){
                 if (param_idx < 8)
@@ -238,6 +347,7 @@ string parse(const koopa_raw_value_t &value) {
                 addr = get_value_stack(&(kind));
                 cur = alloc_reg();
                 cout << "  lw    " << cur << ", " << addr << endl;
+                //cout << "LOAD FROM STACK" << endl;
                 return cur;
             }
             else if (is_value_data_set(&(kind))){
@@ -245,7 +355,6 @@ string parse(const koopa_raw_value_t &value) {
                 addr = string((const char*)&addr[1]);
                 cur = alloc_reg();
                 cout << "  la    " << cur << ", " << addr << endl;
-                cout << "  lw    " << cur << ", 0(" << cur << ")" << endl;
                 return cur;
             }
             else{
@@ -254,20 +363,55 @@ string parse(const koopa_raw_value_t &value) {
                 if (addr[0] == '@' || addr[0] == '%')
                     // global variable
                     set_value_data(&(kind), addr);
-                else
-                    set_value_stack(&(kind), addr);
+                else{
+                    if (on_stack(addr))
+                        set_value_stack(&(kind), addr);
+                        // value saved on stack
+                    else{
+                        cur = alloc_reg();
+                        cout << "  lw    " << cur << ", 0(" << addr << ")" << endl;
+                        addr = to_string(4 * (stack_top ++)) + "(sp)";
+                        cout << "  sw    " << cur << ", " << addr << endl;
+                        set_value_stack(&(kind), addr);
+                        //value saved not on stack
+                    }
+                }
                 return "??? Initial Load";
             }
             break;
         case KOOPA_RVT_STORE:
             // cout << "store " << &(kind) << endl;
             parse(kind.data.store);
-            return "??? RVT STORE";
+            return "??? Initial Store";
         case KOOPA_RVT_GET_PTR:
-            cout << "??? unknown type: RVT_GET_PTR" << endl;
+            if (is_value_stack_set(&(kind))){
+                cur = alloc_reg();
+                addr = get_value_stack(&(kind));
+                cout << "  lw    " << cur << ", " << addr << endl;
+                return cur;
+            }
+            else{
+                cur = parse(kind.data.get_elem_ptr);
+                addr = to_string(4 * (stack_top++)) + "(sp)";
+                cout << "  sw    " << cur << ", " << addr << endl;
+                set_value_stack(&(kind), addr);
+                return "??? Initial Get Ptr";
+            }
             break;
         case KOOPA_RVT_GET_ELEM_PTR:
-            cout << "??? unknown type: RVT_GET_ELEM_PTR" << endl;
+            if (is_value_stack_set(&(kind))){
+                cur = alloc_reg();
+                addr = get_value_stack(&(kind));
+                cout << "  lw    " << cur << ", " << addr << endl;
+                return cur;
+            }
+            else{
+                cur = parse(kind.data.get_elem_ptr);
+                addr = to_string(4 * (stack_top++)) + "(sp)";
+                cout << "  sw    " << cur << ", " << addr << endl;
+                set_value_stack(&(kind), addr);
+                return "??? Initial Get Elem Ptr";
+            }
             break;
         case KOOPA_RVT_BINARY:
             if (parse_param_mode == CALL_PARAMS){
@@ -379,9 +523,23 @@ string parse(const koopa_raw_load_t &load){
 }
 
 void parse(const koopa_raw_store_t &store){
+    if (store.dest -> ty -> tag == KOOPA_RTT_POINTER)
+        if (store.dest -> ty -> data.pointer.base -> tag == KOOPA_RTT_ARRAY){
+            parse_local_arr(store);
+            return;
+            // local array assignment
+        }
+    // pointer assignment
+    // ignore value type check because thay all have 32-bit size
     string cur = parse(store.value);
     if (is_value_stack_set(&(store.dest->kind))){
         string dest = get_value_stack(&(store.dest->kind));
+        if (store.dest->kind.tag == KOOPA_RVT_GET_ELEM_PTR ||
+            store.dest->kind.tag == KOOPA_RVT_GET_PTR){
+                string temp = alloc_reg();
+                cout << "  lw    " << temp << ", " << dest << endl;
+                dest = "0(" + temp + ")";
+            }
         cout << "  sw    " << cur << ", " << dest << endl;
     }
     else if (is_value_data_set(&(store.dest->kind))){
@@ -393,6 +551,151 @@ void parse(const koopa_raw_store_t &store){
     }
     else
         assert(false);
+}
+
+void parse_zeroinit(const string& base, int shift, int len){
+    if (len <= 5){
+        for (int i = 0; i < len; i++){
+            string cur = alloc_reg();
+            cout << "  sw    x0, " << 4 * shift << "(" << base << ")" << endl;
+            remove_reg();
+            shift++;
+        }
+    }
+    else{
+        string fin = alloc_reg();
+        cout << "  addi  " << fin << ", " << base << ", " << 4 * (shift + len) << endl;
+        string itr = alloc_reg();
+        cout << "  addi  " << itr << ", " << base << ", " << 4 * shift << endl;
+        string br = alloc_reg();
+        static int zero_init_num = 0;
+        string block_name = "br_" + to_string(zero_init_num++) + "_zeroinit";
+        cout << block_name << ":" << endl;
+        cout << "  sw    x0, " << "0(" << itr << ")" << endl;
+        cout << "  addi  " << itr << ", " << itr << ", " << 4 << endl;
+        cout << "  xor   " << br << ", " << itr << ", " << fin << endl;
+        cout << "  bnez  " << br << ", " << block_name << endl;
+    }
+}
+
+void parse_local_aggr(const koopa_raw_aggregate_t &aggr, 
+                     const koopa_raw_type_t &type,
+                     const string& base,
+                     int shift){
+    int arr_size = parse_stack(type);
+    int sub_arr_size = arr_size / type -> data.array.len;
+    const koopa_raw_type_t &sub_type = type -> data.array.base;
+    int zero_num = 0;
+    const koopa_raw_slice_t &slice = aggr.elems;
+    assert(slice.kind == KOOPA_RSIK_VALUE);
+    for (int i = 0; i < slice.len; i++){
+        auto ptr = slice.buffer[i];
+        const koopa_raw_value_t& value = reinterpret_cast<koopa_raw_value_t>(ptr);
+        const auto &kind = value -> kind;
+        if (kind.tag == KOOPA_RVT_ZERO_INIT ||
+            (kind.tag == KOOPA_RVT_INTEGER && kind.data.integer.value == 0))
+                zero_num += sub_arr_size;
+        else{
+            if (zero_num){
+                parse_zeroinit(base, shift - zero_num, zero_num);
+                zero_num = 0;
+            }
+            parse_local_arr(value, sub_type, base, shift);
+        }
+        shift += sub_arr_size;
+    }
+    if (zero_num)
+        parse_zeroinit(base, shift - zero_num, zero_num);
+}
+    
+void parse_local_arr(const koopa_raw_value_t &value, 
+                     const koopa_raw_type_t &type,
+                     const string& base,
+                     int shift){
+    string cur;
+    int arr_size;
+    const auto &kind = value -> kind;
+    switch (kind.tag){
+        case KOOPA_RVT_ZERO_INIT:
+            arr_size = parse_stack(type);
+            parse_zeroinit(base, shift, arr_size);
+            break;
+        case KOOPA_RVT_INTEGER:
+            assert(type -> tag == KOOPA_RTT_INT32);
+            cur = alloc_reg();
+            cout << "  li    " << cur << ", " << kind.data.integer.value << endl;
+            cout << "  sw    " << cur << ", " << 4 * shift << "(" << base << ")" << endl;
+            break;
+        case KOOPA_RVT_AGGREGATE:
+            parse_local_aggr(kind.data.aggregate, type, base, shift);
+            break;
+        default:
+            cout << "Bad local array initialization" << endl;
+    }
+}
+
+
+void parse_global_aggr(const koopa_raw_aggregate_t &aggr, 
+                      const koopa_raw_type_t &type){
+    int arr_size = parse_stack(type);
+    int sub_arr_size = arr_size / type -> data.array.len;
+    const koopa_raw_type_t &sub_type = type -> data.array.base;
+    int zero_num = 0;
+    const koopa_raw_slice_t &slice = aggr.elems;
+    assert(slice.kind == KOOPA_RSIK_VALUE);
+    for (int i = 0; i < slice.len; i++){
+        auto ptr = slice.buffer[i];
+        const koopa_raw_value_t& value = reinterpret_cast<koopa_raw_value_t>(ptr);
+        const auto &kind = value -> kind;
+        if (kind.tag == KOOPA_RVT_ZERO_INIT ||
+            (kind.tag == KOOPA_RVT_INTEGER && kind.data.integer.value == 0))
+                zero_num += sub_arr_size;
+        else{
+            if (zero_num){
+                cout << "  .zero " << zero_num * 4 << endl;
+                zero_num = 0;
+            }
+            parse_global_arr(value, sub_type);
+        }
+    }
+    if (zero_num)
+        cout << "  .zero " << zero_num * 4 << endl;
+}
+void parse_global_arr(const koopa_raw_value_t &value, 
+                     const koopa_raw_type_t &type){
+    string cur;
+    int arr_size;
+    const auto &kind = value -> kind;
+    switch (kind.tag){
+        case KOOPA_RVT_ZERO_INIT:
+            arr_size = parse_stack(type);
+            cout << "  .zero " << arr_size * 4 << endl; 
+            break;
+        case KOOPA_RVT_INTEGER:
+            assert(type -> tag == KOOPA_RTT_INT32);
+            cout << "  .word " << kind.data.integer.value << endl;
+            break;
+        case KOOPA_RVT_AGGREGATE:
+            parse_global_aggr(kind.data.aggregate, type);
+            break;
+        default:
+            cout << "Bad local array initialization" << endl;
+    }
+}
+void parse_local_arr(const koopa_raw_store_t &store){
+    const koopa_raw_type_t &type = store.dest -> ty -> data.pointer.base;
+    assert(type -> tag == KOOPA_RTT_ARRAY);
+    const koopa_raw_value_t &value = store.value;
+    assert(is_value_stack_set(&(store.dest -> kind)));
+    string addr = get_value_stack(&(store.dest -> kind));
+    int shift = atoi(addr.substr(0, addr.length() - 4).c_str()) / 4;
+    parse_local_arr(value, type, "sp", shift);
+}
+void parse_global_arr(const koopa_raw_value_t &value){
+    const koopa_raw_type_t &type = value -> ty -> data.pointer.base;
+    assert(type -> tag == KOOPA_RTT_ARRAY);
+    const koopa_raw_value_t &arr_value = value -> kind.data.global_alloc.init;
+    parse_global_arr(arr_value, type);
 }
 
 void parse(const koopa_raw_branch_t &branch){
@@ -424,9 +727,6 @@ void parse(const koopa_raw_global_alloc_t &g_alloc){
     switch (kind.tag){
         case KOOPA_RVT_INTEGER:
             cout << "  .word " << kind.data.integer.value << endl;
-            break;
-        case KOOPA_RVT_ZERO_INIT:
-            cout << "undealed var type: RVT_KOOPA_ZERO_INIT" << endl;
             break;
         default:
             cout << "bad var initial value" << endl;
@@ -523,6 +823,37 @@ string parse(const koopa_raw_binary_t &ret){
             assert(false);
     }
     return "???";
+}
+
+
+string parse(const koopa_raw_get_ptr_t &get_ptr){
+    const koopa_raw_type_t type = get_ptr.src -> ty;
+    assert(type -> tag == KOOPA_RTT_POINTER);
+    const koopa_raw_type_t base_type = type -> data.pointer.base;
+    int sub_size = parse_stack(base_type) * 4;
+    string cur = alloc_reg();
+    string base = parse(get_ptr.src);
+    string index = parse(get_ptr.index);
+    cout << "  li    " << cur << ", " << sub_size << endl;
+    cout << "  mul   " << cur << ", " << cur << ", " << index << endl;
+    cout << "  add   " << cur << ", " << cur << ", " << base << endl;
+    return cur;
+}
+
+string parse(const koopa_raw_get_elem_ptr_t &get_elem_ptr){
+    const koopa_raw_type_t type = get_elem_ptr.src -> ty;
+    assert(type -> tag == KOOPA_RTT_POINTER);
+    const koopa_raw_type_t base_type = type -> data.pointer.base;
+    assert(base_type -> tag == KOOPA_RTT_ARRAY);
+    const koopa_raw_type_t sub_type = base_type -> data.array.base;
+    int sub_size = parse_stack(sub_type) * 4;
+    string cur = alloc_reg();
+    string base = parse(get_elem_ptr.src);
+    string index = parse(get_elem_ptr.index);
+    cout << "  li    " << cur << ", " << sub_size << endl;
+    cout << "  mul   " << cur << ", " << cur << ", " << index << endl;
+    cout << "  add   " << cur << ", " << cur << ", " << base << endl;
+    return cur;
 }
 
 void parse(const koopa_raw_integer_t &integer){

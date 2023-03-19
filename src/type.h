@@ -14,10 +14,15 @@
 #include "symbol.h"
 #include "block.h"
 #include "loop.h"
+#include "arr.h"
 
 using namespace std;
 
+/* is the decl in global, or in function*/
 static bool is_global_decl = false;
+/* pointer of the array, used in address calculation for array elements*/
+static string arr_ptr;
+/* size of each dimension */
 class BaseAST{
     public:  
         virtual ~BaseAST() = default;
@@ -227,6 +232,7 @@ class StmtAST1: public BaseAST{
         std::unique_ptr<BaseAST> l_val;
         std::unique_ptr<BaseAST> exp;
         void DumpIR() const override{
+            l_val -> DumpIR();
             string l_val_id = l_val -> ExpId();
             if (l_val_id[0] != '@')
                 cout << " ??? LVal is a const variable" << endl;
@@ -421,9 +427,12 @@ class DeclAST: public BaseAST{
     public:
         std::unique_ptr<BaseAST> const_or_var_decl;
         void DumpIR() const override{
+            //cout << "Decl" << endl;
             const_or_var_decl -> DumpIR();
         }
 };
+
+/* -------------------- Const Decls --------------------- */
 
 class ConstDeclAST: public BaseAST{
     /*ConstDecl     ::= "const" BType ConstDef {"," ConstDef} ";";*/
@@ -448,6 +457,14 @@ class BTypeAST: public BaseAST{
         }
 };
 
+class ConstDefAST: public BaseAST{
+    public:
+        std::unique_ptr<BaseAST> def;
+        void DumpIR() const override{
+            def -> DumpIR();
+        }
+}; 
+
 class ConstDefListAST: public BaseAST{
     public:
         std::unique_ptr<BaseAST> const_def;
@@ -460,13 +477,38 @@ class ConstDefListAST: public BaseAST{
 };
 
 // IgNore BType for only "int" type is used
-class ConstDefAST: public BaseAST{
+class ConstDefIDENTAST: public BaseAST{
     /*ConstDef      ::= IDENT "=" ConstInitVal;*/
     public:
         std::string ident;
         std::unique_ptr<BaseAST> const_init_val;
         void DumpIR() const override{
             set_symbol_value(ident, const_init_val -> ExpVal());
+        }
+};
+
+class ConstDefArrAST: public BaseAST{
+    /* ConstDef      ::= IDENT ArrSizeList "=" ConstInitArrVal; */
+    public:
+        std::string ident;
+        std::unique_ptr<BaseAST> arr_size;
+        std::unique_ptr<BaseAST> const_init_arr_val;
+        int var_id;
+        void DumpIR() const override{
+            clear_arr_info();
+            arr_size -> DumpIR();
+            pre_arr_initialize(CONST_ARR);
+            const_init_arr_val -> DumpIR();
+            set_symbol_var_id(ident, var_id);
+            if (is_global_decl){
+                string exp_val = get_arr_val();
+                cout << "global @" << get_symbol_name(ident) << " = alloc " << arr_size -> ExpId() << ", " << exp_val << endl;
+            }
+            else{
+                cout << "  @" << get_symbol_name(ident) << " = alloc " << arr_size -> ExpId() << endl;
+                cout << "  store zeroinit, @" << get_symbol_name(ident) << endl;
+                fit_local_arr(get_symbol_name(ident));
+            }
         }
 };
 
@@ -481,6 +523,43 @@ class ConstInitValAST: public BaseAST{
         }
 };
 
+class ConstInitValArrAST: public BaseAST{
+    /* InitValArr             ::= '{' {ConstInitValList} '}' */
+    public:
+        std::unique_ptr<BaseAST> const_init_val_list;
+        void DumpIR() const override{
+            left_bracket();
+            if (const_init_val_list != nullptr)
+                const_init_val_list -> DumpIR();
+            right_bracket();
+        }
+};
+
+class ConstInitValListAST: public BaseAST{
+    /* ConstInitValList             ::= ConstInitValElem [',' ConstInitValElem] */
+    public:
+        std::unique_ptr<BaseAST> next;
+        std::unique_ptr<BaseAST> const_init_val;
+        void DumpIR() const override{
+            if (next != nullptr)
+                next -> DumpIR();
+            const_init_val -> DumpIR();
+        }
+};
+
+class ConstInitValElemAST: public BaseAST{
+    public:
+        std::unique_ptr<BaseAST> val;
+        bool is_arr;
+        void DumpIR() const override{
+            val -> DumpIR();
+            if (!is_arr)
+                insert_arr_val(to_string(val -> ExpVal()));
+        }
+};
+
+
+/* -------------------- Var Decls --------------------- */
 
 class VarDeclAST: public BaseAST{
     /*VarDecl       ::= BType VarDef {"," VarDef} ";"*/
@@ -503,7 +582,16 @@ class VarDefListAST: public BaseAST{
         }
 };
 
+
 class VarDefAST: public BaseAST{
+    public:
+        std::unique_ptr<BaseAST> def;
+        void DumpIR() const override{
+            def -> DumpIR();
+        }
+};
+
+class VarDefIDENTAST: public BaseAST{
     /*VarDef        ::= IDENT | IDENT "=" InitVal;*/
     public:
         std::string ident;
@@ -530,6 +618,39 @@ class VarDefAST: public BaseAST{
         }
 };
 
+class VarDefArrAST: public BaseAST{
+    /* VarDef        ::= IDENT ArrSizeList ['=' InitArrVal] */
+    public:
+        std::string ident;
+        std::unique_ptr<BaseAST> arr_size;
+        std::unique_ptr<BaseAST> init_arr_val;
+        int var_id;
+        void DumpIR() const override{
+            string exp_val = "zeroinit";
+            if (init_arr_val != nullptr){
+                clear_arr_info();
+                arr_size -> DumpIR();
+                pre_arr_initialize(VAR_ARR);
+                init_arr_val -> DumpIR();
+                exp_val = get_arr_val();
+            }
+            else{
+                clear_arr_info();
+                arr_size -> DumpIR();
+            }
+            set_symbol_var_id(ident, var_id);
+            if (is_global_decl){
+                cout << "global @" << get_symbol_name(ident) << " = alloc " << arr_size -> ExpId() << ", " << exp_val << endl;
+            }
+            else{
+                cout << "  @" << get_symbol_name(ident) << " = alloc " << arr_size -> ExpId() << endl;
+                cout << "  store zeroinit, @" << get_symbol_name(ident) << endl;
+                if (init_arr_val != nullptr)
+                    fit_local_arr(get_symbol_name(ident));
+            }
+        }
+};
+
 class InitValAST: public BaseAST{
     /*InitVal       ::= Exp;*/
     public:
@@ -545,9 +666,133 @@ class InitValAST: public BaseAST{
         }
 };
 
+class InitValArrAST: public BaseAST{
+    /* InitValArr             ::= '{' {InitValList} '}' */
+    public:
+        std::unique_ptr<BaseAST> init_val_list;
+        void DumpIR() const override{
+            //cout << "InitValArr" << endl;
+            left_bracket();
+            if (init_val_list != nullptr)
+                init_val_list -> DumpIR();
+            right_bracket();
+        }
+};
+
+class InitValListAST: public BaseAST{
+    /* InitValList             ::= InitValElem [',' InitValElem] */
+    public:
+        std::unique_ptr<BaseAST> next;
+        std::unique_ptr<BaseAST> init_val;
+        void DumpIR() const override{
+            //cout << "InitValList" << endl;
+            if (next != nullptr)
+                next -> DumpIR();
+            init_val -> DumpIR();
+        }
+};
+
+class InitValElemAST: public BaseAST{
+    public:
+        std::unique_ptr<BaseAST> val;
+        bool is_arr;
+        void DumpIR() const override{
+            //cout << "InitValElem" << endl;
+            val -> DumpIR();
+            if (!is_arr)
+                insert_arr_val(val -> ExpId());
+        }
+};
+/* ------------------ Array Params --------------- */
+
+class ArrSizesAST: public BaseAST{
+    public:
+        std::unique_ptr<BaseAST> arr_size; 
+        std::unique_ptr<BaseAST> next;
+        void DumpIR() const override{
+            if (next != nullptr)
+                next -> DumpIR();
+            arr_size -> DumpIR();
+        }
+        string ExpId() const override{
+            return get_arr_exp_id();
+        }
+};
+
+class ArrSizeAST: public BaseAST{
+    public:
+        std::unique_ptr<BaseAST> exp;
+        void DumpIR() const override{
+            int exp_val = exp -> ExpVal();
+            assert(exp_val >= 1);
+            alloc_dim(exp_val);
+        }
+        int ExpVal() const override{
+            return exp -> ExpVal();
+        }
+};
+
+class ArrParamsAST: public BaseAST{
+    public:
+        std::unique_ptr<BaseAST> arr_param; 
+        std::unique_ptr<BaseAST> next;
+        void DumpIR() const override{
+            if (next != nullptr)
+                next -> DumpIR();
+            arr_param -> DumpIR();
+        }
+        string ExpId() const override{
+            return arr_param -> ExpId();
+        }
+};
+
+class ArrParamAST: public BaseAST{
+    public:
+        std::unique_ptr<BaseAST> exp;
+        int exp_id;
+        void DumpIR() const override{
+            string cur_arr_ptr = arr_ptr;
+            exp -> DumpIR();
+            arr_ptr = "@ptr_" + to_string(exp_id) + "_arr";
+            cout << "  " << arr_ptr << " = getelemptr " << cur_arr_ptr << ", " << exp -> ExpId() << endl;
+        }
+        string ExpId() const override{
+            return "@ptr_" + to_string(exp_id) + "_arr";
+        }
+};
+
 /* ------------------ Expressions ---------------- */
 
 class LValAST: public BaseAST{
+    public:
+        std::unique_ptr<BaseAST> l_val;
+        void DumpIR() const override{
+            l_val -> DumpIR();
+        }
+        string ExpId() const override{
+            return l_val -> ExpId();
+        }
+        int ExpVal() const override{
+            return l_val -> ExpVal();
+        }
+};
+
+class LValArrAST: public BaseAST{
+    /*LVal          ::= IDENT "[" Exp "]";*/
+    public:
+        std::string ident;
+        std::unique_ptr<BaseAST> arr_param; 
+        int exp_id;
+        void DumpIR() const override{
+            arr_ptr = "@" + get_symbol_name(ident);
+            arr_param -> DumpIR();
+        }
+        string ExpId() const override{
+            return arr_param -> ExpId();
+        }
+};
+
+class LValIDENTAST: public BaseAST{
     /*LVal          ::= IDENT;*/
     public:
         std::string ident;
@@ -637,6 +882,7 @@ class PrimaryExpAST3: public BaseAST{
         std::unique_ptr<BaseAST> l_val;
         int exp_id;
         void DumpIR() const override{
+            l_val -> DumpIR();
             string l_val_id = l_val -> ExpId();
             if (l_val_id[0] == '@')
                 cout << "  %" << exp_id << " = load " << l_val_id << endl;

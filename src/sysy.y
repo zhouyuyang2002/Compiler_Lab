@@ -41,9 +41,13 @@ static int br_num = 0;
 %token <str_val> IDENT
 %token <int_val> INT_CONST 
 %type <ast_val> FuncDefList FuncDef FuncType FuncFParams FuncFParam FuncRParams
-%type <ast_val> Block BlockItem BlockItems Stmt Number
-%type <ast_val> Decl ConstDecl ConstDef ConstDefs ConstInitVal LVal ConstExp
-%type <ast_val> VarDecl VarDefs VarDef InitVal BType IfStmt
+%type <ast_val> Block BlockItem BlockItems Stmt IfStmt Number Decl
+%type <ast_val> ConstDecl ConstDefs ConstDef ConstDefIDENT ConstDefArr
+%type <ast_val> ConstInitVal ConstInitValArr ConstInitValList ConstInitValElem ConstExp
+%type <ast_val> VarDecl VarDefs VarDef VarDefIDENT VarDefArr
+%type <ast_val> ArrSizeList ArrSize ArrParamList ArrParam
+%type <ast_val> InitVal InitValArr InitValList InitValElem BType 
+%type <ast_val> LVal LValArr LValIDENT
 %type <ast_val> Exp PrimaryExp UnaryExp MulExp AddExp
 %type <ast_val> LOrExp LAndExp RelExp EqExp
 %type <chr_val> UnaryOp AddOp MulOp
@@ -317,8 +321,30 @@ ConstDefs
   }
 
 ConstDef
-  : IDENT '=' ConstInitVal {
+  : ConstDefIDENT {
     auto ast = new ConstDefAST();
+    ast -> def = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }|
+  ConstDefArr {
+    auto ast = new ConstDefAST();
+    ast -> def = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+
+ConstDefArr
+  : IDENT ArrSizeList '=' ConstInitValArr{
+    auto ast = new ConstDefArrAST();
+    ast -> ident = *unique_ptr<string>($1);
+    ast -> arr_size = unique_ptr<BaseAST>($2);
+    ast -> const_init_arr_val = unique_ptr<BaseAST>($4);
+    ast -> var_id = var_num ++;
+    $$ = ast;
+  }
+
+ConstDefIDENT
+  : IDENT '=' ConstInitVal {
+    auto ast = new ConstDefIDENTAST();
     ast -> ident = *unique_ptr<string>($1);
     ast -> const_init_val = unique_ptr<BaseAST>($3);
     $$ = ast;
@@ -328,6 +354,47 @@ ConstInitVal
   : ConstExp {
     auto ast = new ConstInitValAST();
     ast -> const_exp = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+
+  
+ConstInitValArr
+  : '{' '}' {
+    auto ast = new ConstInitValArrAST();
+    ast -> const_init_val_list = nullptr;
+    $$ = ast;
+  }|
+  '{' ConstInitValList '}' {
+    auto ast = new ConstInitValArrAST();
+    ast -> const_init_val_list = unique_ptr<BaseAST>($2);
+    $$ = ast;
+  }
+
+ConstInitValList
+  : ConstInitValElem {
+    auto ast = new ConstInitValListAST();
+    ast -> next = nullptr;
+    ast -> const_init_val = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }|
+  ConstInitValList ',' ConstInitValElem {
+    auto ast = new ConstInitValListAST();
+    ast -> next = unique_ptr<BaseAST>($1);
+    ast -> const_init_val = unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+
+ConstInitValElem
+  : ConstInitVal {
+    auto ast = new ConstInitValElemAST();
+    ast -> val = unique_ptr<BaseAST>($1);
+    ast -> is_arr = false;
+    $$ = ast;
+  }|
+  ConstInitValArr {
+    auto ast = new ConstInitValElemAST();
+    ast -> val = unique_ptr<BaseAST>($1);
+    ast -> is_arr = true;
     $$ = ast;
   }
 
@@ -354,18 +421,67 @@ VarDefs
   }
 
 VarDef
-  : IDENT {
+  : VarDefIDENT {
     auto ast = new VarDefAST();
+    ast -> def = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }|
+  VarDefArr {
+    auto ast = new VarDefAST();
+    ast -> def = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+
+VarDefArr
+  : IDENT ArrSizeList '=' InitValArr{
+    auto ast = new VarDefArrAST();
+    ast -> ident = *unique_ptr<string>($1);
+    ast -> arr_size = unique_ptr<BaseAST>($2);
+    ast -> init_arr_val = unique_ptr<BaseAST>($4);
+    $$ = ast;
+  }|
+  IDENT ArrSizeList{
+    auto ast = new VarDefArrAST();
+    ast -> ident = *unique_ptr<string>($1);
+    ast -> arr_size = unique_ptr<BaseAST>($2);
+    ast -> init_arr_val = nullptr;
+    $$ = ast;
+  }
+
+VarDefIDENT
+  : IDENT {
+    auto ast = new VarDefIDENTAST();
     ast -> ident = *unique_ptr<string>($1);
     ast -> init_val = nullptr;
     ast -> var_id = var_num++;
     $$ = ast;
   }|
   IDENT '=' InitVal {
-    auto ast = new VarDefAST();
+    auto ast = new VarDefIDENTAST();
     ast -> ident = *unique_ptr<string>($1);
     ast -> init_val = unique_ptr<BaseAST>($3);
     ast -> var_id = var_num++;
+    $$ = ast;
+  }
+
+ArrSizeList
+  : ArrSize {
+    auto ast = new ArrSizesAST();
+    ast -> next = nullptr;
+    ast -> arr_size = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }|
+  ArrSizeList ArrSize {
+    auto ast = new ArrSizesAST();
+    ast -> next = unique_ptr<BaseAST>($1);
+    ast -> arr_size = unique_ptr<BaseAST>($2);
+    $$ = ast;
+  }
+
+ArrSize
+  : '[' ConstExp ']' {
+    auto ast = new ArrSizeAST();
+    ast -> exp = unique_ptr<BaseAST>($2);
     $$ = ast;
   }
 
@@ -376,11 +492,95 @@ InitVal
     $$ = ast;
   }
 
+InitValArr
+  : '{' '}' {
+    auto ast = new InitValArrAST();
+    ast -> init_val_list = nullptr;
+    $$ = ast;
+  }|
+  '{' InitValList '}' {
+    auto ast = new InitValArrAST();
+    ast -> init_val_list = unique_ptr<BaseAST>($2);
+    $$ = ast;
+  }
+
+InitValList
+  : InitValElem {
+    auto ast = new InitValListAST();
+    ast -> next = nullptr;
+    ast -> init_val = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }|
+  InitValList ',' InitValElem {
+    auto ast = new InitValListAST();
+    ast -> next = unique_ptr<BaseAST>($1);
+    ast -> init_val = unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+
+InitValElem
+  : InitVal {
+    auto ast = new InitValElemAST();
+    ast -> val = unique_ptr<BaseAST>($1);
+    ast -> is_arr = false;
+    $$ = ast;
+  }|
+  InitValArr {
+    auto ast = new InitValElemAST();
+    ast -> val = unique_ptr<BaseAST>($1);
+    ast -> is_arr = true;
+    $$ = ast;
+  }
+
+
 LVal
-  : IDENT {
+  : LValIDENT {
     auto ast = new LValAST();
+    ast -> l_val = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }|
+  LValArr {
+    auto ast = new LValAST();
+    ast -> l_val = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+
+LValIDENT
+  : IDENT {
+    auto ast = new LValIDENTAST();
     ast -> ident = *unique_ptr<string>($1);
     ast -> exp_id = exp_num++;
+    $$ = ast;
+  }
+
+LValArr
+  : IDENT ArrParamList{
+    auto ast = new LValArrAST();
+    ast -> ident = *unique_ptr<string>($1);
+    ast -> arr_param = unique_ptr<BaseAST>($2);
+    ast -> exp_id = exp_num++;
+    $$ = ast;
+  }
+
+ArrParamList
+  : ArrParam{
+    auto ast = new ArrParamsAST();
+    ast -> next = nullptr;
+    ast -> arr_param = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }|
+  ArrParamList ArrParam{
+    auto ast = new ArrParamsAST();
+    ast -> next = unique_ptr<BaseAST>($1);
+    ast -> arr_param = unique_ptr<BaseAST>($2);
+    $$ = ast;
+  }
+
+ArrParam
+  : '[' Exp ']' {
+    auto ast = new ArrParamAST();
+    ast -> exp = unique_ptr<BaseAST>($2);
+    ast -> exp_id = exp_num ++;
     $$ = ast;
   }
 
