@@ -37,7 +37,7 @@ int main(int argc, const char *argv[]){
     cout << endl;
     fclose(stdout);
   }
-  if (string(mode) == "-riscv"){
+  if (string(mode) == "-riscv" || string(mode) == "-perf"){
     char buf[512] = {0};
     sprintf(buf, "%s.koopa", input);
     freopen(buf, "w", stdout);

@@ -37,10 +37,57 @@ string alloc_reg(){
         return "t" + to_string(val);
     return "a" + to_string(val - 7);
 }
+void remove_reg(){
+    -- reg_num;
+}
+
 string realloc_reg(const std::string &src, const std::string &dst){
     if (dst != src)
         cout << "  xor   " << dst << ", " << src << ", x0" << endl;
     return dst;
+}
+
+void fixed_addi(const std::string &dst, const std::string &src, int val){
+    if (-2048 <= val && val <= 2047)
+        cout << "  addi  " << dst << ", " << src << ", " << val << endl;
+    else{
+        string cur = alloc_reg();
+        cout << "  li    " << cur << ", " << val << endl;
+        cout << "  add   " << dst << ", " << src << ", " << cur << endl;
+        remove_reg();
+    }
+} 
+
+void fixed_lw(const std::string &src, const std::string &addr){
+    int i = 0;
+    while (addr[i] >= '0' && addr[i] <= '9') ++i;
+    int shift = atoi(addr.substr(0, i).c_str());
+    string reg = addr.substr(i + 1, addr.length() - i - 2);
+    if (-2048 <= shift && shift <= 2047)
+        cout << "  lw    " << src << ", " << addr << endl;
+    else{
+        string cur = alloc_reg();
+        cout << "  li    " << cur << ", " << shift << endl;
+        cout << "  add   " << cur << ", " << cur << ", " << reg << endl;
+        cout << "  lw    " << src << ", 0(" << cur << ")" << endl;
+        remove_reg();
+    }
+}
+
+void fixed_sw(const std::string &src, const std::string &addr){
+    int i = 0;
+    while (addr[i] >= '0' && addr[i] <= '9') ++i;
+    int shift = atoi(addr.substr(0, i).c_str());
+    string reg = addr.substr(i + 1, addr.length() - i - 2);
+    if (-2048 <= shift && shift <= 2047)
+        cout << "  sw    " << src << ", " << addr << endl;
+    else{
+        string cur = alloc_reg();
+        cout << "  li    " << cur << ", " << shift << endl;
+        cout << "  add   " << cur << ", " << cur << ", " << reg << endl;
+        cout << "  sw    " << src << ", 0(" << cur << ")" << endl;
+        remove_reg();
+    }
 }
 
 /* 
@@ -87,4 +134,8 @@ string get_value_data(const void* addr){
     return map_value_data[(uint64_t)addr];
 }
 
+bool on_stack(string addr){
+    int len = addr.length();
+    return len >= 4 && addr.substr(len - 4, 4) == "(sp)";
+}
 #endif

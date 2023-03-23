@@ -14,6 +14,7 @@ int parse_param(const koopa_raw_value_t &value);
 int parse_stack(const koopa_raw_slice_t &slice);
 int parse_stack(const koopa_raw_basic_block_t &bb);
 int parse_stack(const koopa_raw_value_t &value);
+int parse_stack(const koopa_raw_type_t &type);
 
 int parse_param(const koopa_raw_slice_t &slice) {
     int max_args = 0;
@@ -78,14 +79,39 @@ int parse_stack(const koopa_raw_basic_block_t &bb) {
 int parse_stack(const koopa_raw_value_t &value) {
     /*printf("parse value name: %s\n", value -> name);*/
     const auto &kind = value->kind;
+    koopa_raw_type_t ptr_type;
     string cur;
     switch (kind.tag) {
         case KOOPA_RVT_ALLOC:
+            if (value -> ty -> tag == KOOPA_RTT_INT32)
+                return 1;
+                //alloc a integer
+            else if (value -> ty -> tag == KOOPA_RTT_POINTER){
+                ptr_type = (koopa_raw_type_t)(value -> ty -> data.pointer.base);
+                switch (ptr_type -> tag){
+                    case KOOPA_RTT_ARRAY:
+                        return parse_stack(ptr_type);
+                    case KOOPA_RTT_INT32:
+                    case KOOPA_RTT_POINTER:
+                        return 1;
+                    default:
+                        return -19260817;
+                }
+            }
+            else
+                return -19260817;
+        case KOOPA_RVT_LOAD:
+            if (kind.data.store.value -> kind.tag == KOOPA_RVT_GET_ELEM_PTR)
+                return 1;
+            if (kind.data.store.value -> kind.tag == KOOPA_RVT_GET_PTR)
+                return 1;
+            return 0;
+        case KOOPA_RVT_GET_ELEM_PTR:
             return 1;
-            // alloc a integer
+        case KOOPA_RVT_GET_PTR:
+            return 1;
         case KOOPA_RVT_BINARY:
             return 1;
-            // operation;
         case KOOPA_RVT_CALL:
             if (kind.data.call.callee -> ty -> data.function.ret -> tag == KOOPA_RTT_INT32)
                 return 1;
@@ -93,6 +119,22 @@ int parse_stack(const koopa_raw_value_t &value) {
         default:
             return 0;
     }
+}
+
+int parse_stack(const koopa_raw_type_t &type){
+    assert(type -> tag != KOOPA_RTT_FUNCTION);
+    assert(type -> tag != KOOPA_RTT_UNIT);
+    switch(type -> tag){
+        case KOOPA_RTT_INT32:
+            return 1;
+        case KOOPA_RTT_POINTER:
+            return 1; //  32-bit compiler
+        case KOOPA_RTT_ARRAY:
+            return type -> data.array.len * parse_stack((koopa_raw_type_t)type -> data.array.base);
+        default:
+            cout << "Powered by zhouyuyang2002" << endl;
+    }
+    return -19260817;
 }
 
 #endif

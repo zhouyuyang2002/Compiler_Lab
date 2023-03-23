@@ -1,7 +1,7 @@
   .text
   .globl main
 main:
-  li   t0, -16416
+  li   t0, -16400
   add   sp, sp, t0
 entry_main:
   li    t1, 16384
@@ -13,7 +13,7 @@ br_0_zeroinit:
   xor   t2, t1, t0
   bnez  t2, br_0_zeroinit
   addi  t1, sp, 0
-  li    t2, 2
+  li    t2, 3
   li    t0, 4096
   mul   t0, t0, t2
   add   t0, t0, t1
@@ -29,35 +29,13 @@ br_0_zeroinit:
   li    t2, 16388
   add   t2, t2, sp
   sw    t0, 0(t2)
-  li    t0, 3
+  li    t0, 4
   li    t2, 16388
   add   t2, t2, sp
   lw    t1, 0(t2)
   sw    t0, 0(t1)
-  addi  t1, sp, 0
-  li    t2, 3
-  li    t0, 4096
-  mul   t0, t0, t2
-  add   t0, t0, t1
-  li    t3, 16392
-  add   t3, t3, sp
-  sw    t0, 0(t3)
-  li    t2, 16392
-  add   t2, t2, sp
-  lw    t1, 0(t2)
-  li    t0, 4
-  mul   t0, t0, x0
-  add   t0, t0, t1
-  li    t2, 16396
-  add   t2, t2, sp
-  sw    t0, 0(t2)
-  li    t0, 4
-  li    t2, 16396
-  add   t2, t2, sp
-  lw    t1, 0(t2)
-  sw    t0, 0(t1)
   xor   a0, x0, x0
-  li    t0, 16416
+  li    t0, 16400
   add   sp, sp, t0
   ret
 

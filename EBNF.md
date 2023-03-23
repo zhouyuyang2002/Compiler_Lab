@@ -21,13 +21,15 @@ Stmt          ::= LVal "=" Exp ";"
 Decl          ::= ConstDecl | VarDecl; 
 ConstDecl     ::= "const" BType ConstDef {"," ConstDef} ";";
 BType         ::= "int";
-ConstDef      ::= IDENT "=" ConstInitVal;
-ConstInitVal  ::= ConstExp;
+ConstDef      ::= IDENT {"[" ConstExp "]"} "=" ConstInitVal;
+ConstInitVal  ::= ConstExp | "{" [ConstInitVal {"," ConstInitVal}] "}";
 VarDecl       ::= BType VarDef {"," VarDef} ";";
-VarDef        ::= IDENT | IDENT "=" InitVal;
-InitVal       ::= Exp;
+VarDef        ::= IDENT {"[" ConstExp "]"}
+                | IDENT {"[" ConstExp "]"} "=" InitVal;
 
-LVal          ::= IDENT;
+InitVal       ::= Exp | "{" [InitVal {"," InitVal}] "}";
+
+LVal          ::= IDENT {"[" Exp "]"};
 ConstExp      ::= Exp;
 Exp           ::= LOrExp;
 PrimaryExp    ::= "(" Exp ")" | LVal | Number | IDENT "(" [FuncRParams] ")"
@@ -40,3 +42,20 @@ EqExp         ::= RelExp | EqExp ("==" | "!=") RelExp;
 LAndExp       ::= EqExp | LAndExp "&&" EqExp;
 LOrExp        ::= LAndExp | LOrExp "||" LAndExp;
 Number        ::= INT_CONST;
+
+/*Todo List*/
+
+ConstDefArr *
+ConstInitValArr
+ConstInitList
+
+VarDefArr *
+InitValArr
+InitList
+
+ArrSizeList *
+ArrSize *
+ArrParamList *
+ArrParam *
+
+LValArr *

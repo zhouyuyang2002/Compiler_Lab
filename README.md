@@ -12,8 +12,8 @@ build/compiler -riscv hello.c -o hello.koopa
 
 ### Autotest
 
-docker run -it --rm -v C:\Users\10679\Documents\GitHub\Compiler_Lab:/root/compiler maxxing/compiler-dev autotest -koopa -s lv8 /root/compiler
-docker run -it --rm -v C:\Users\10679\Documents\GitHub\Compiler_Lab:/root/compiler maxxing/compiler-dev autotest -riscv -s lv8 /root/compiler
+docker run -it --rm -v C:\Users\10679\Documents\GitHub\Compiler_Lab:/root/compiler maxxing/compiler-dev autotest -koopa /root/compiler
+docker run -it --rm -v C:\Users\10679\Documents\GitHub\Compiler_Lab:/root/compiler maxxing/compiler-dev autotest -riscv /root/compiler
 
 ### Compile Koopa IR
 
