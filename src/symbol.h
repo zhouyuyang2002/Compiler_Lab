@@ -14,6 +14,8 @@ enum func_type_t{
     FUNC_INT
 };
 
+const int VAR_DEF_INT = 0;
+
 void alloc_symbol_space();
 void remove_symbol_space();
 int get_symbol_depth(const std::string &name);

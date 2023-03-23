@@ -40,7 +40,7 @@ static int br_num = 0;
 %token IF ELSE WHILE BREAK CONTINUE
 %token <str_val> IDENT
 %token <int_val> INT_CONST 
-%type <ast_val> FuncDefList FuncDef FuncType FuncFParams FuncFParam FuncRParams
+%type <ast_val> FuncDefList FuncDef FuncType FuncFParams FuncFParam FuncFParamInt FuncFParamArr FuncRParams
 %type <ast_val> Block BlockItem BlockItems Stmt IfStmt Number Decl
 %type <ast_val> ConstDecl ConstDefs ConstDef ConstDefIDENT ConstDefArr
 %type <ast_val> ConstInitVal ConstInitValArr ConstInitValList ConstInitValElem ConstExp
@@ -150,10 +150,38 @@ FuncFParams
   }
 
 FuncFParam:
-  BType IDENT {
+  FuncFParamInt{
     auto ast = new FuncFParamAST();
+    ast -> param = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }|
+  FuncFParamArr{
+    auto ast = new FuncFParamAST();
+    ast -> param = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+
+FuncFParamInt:
+  BType IDENT{
+    auto ast = new FuncFParamIntAST();
     ast -> type = unique_ptr<BaseAST>($1);
     ast -> ident = *unique_ptr<string>($2);
+    $$ = ast;
+  }
+
+FuncFParamArr:
+  BType IDENT '[' ']'{
+    auto ast = new FuncFParamArrAST();
+    ast -> type = unique_ptr<BaseAST>($1);
+    ast -> ident = *unique_ptr<string>($2);
+    ast -> size = nullptr;
+    $$ = ast;
+  }|
+  BType IDENT '[' ']' ArrSizeList{
+    auto ast = new FuncFParamArrAST();
+    ast -> type = unique_ptr<BaseAST>($1);
+    ast -> ident = *unique_ptr<string>($2);
+    ast -> size = unique_ptr<BaseAST>($5);
     $$ = ast;
   }
 
@@ -558,6 +586,7 @@ LValArr
     auto ast = new LValArrAST();
     ast -> ident = *unique_ptr<string>($1);
     ast -> arr_param = unique_ptr<BaseAST>($2);
+    exp_num ++;
     ast -> exp_id = exp_num++;
     $$ = ast;
   }

@@ -20,5 +20,6 @@ void right_bracket();
 std::string get_arr_val();
 std::string get_arr_exp_id();
 void fit_local_arr(const std::string &str);
+int arr_dim_num();
 
 #endif

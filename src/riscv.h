@@ -391,7 +391,7 @@ string parse(const koopa_raw_value_t &value) {
                 return cur;
             }
             else{
-                cur = parse(kind.data.get_elem_ptr);
+                cur = parse(kind.data.get_ptr);
                 addr = to_string(4 * (stack_top++)) + "(sp)";
                 cout << "  sw    " << cur << ", " << addr << endl;
                 set_value_stack(&(kind), addr);

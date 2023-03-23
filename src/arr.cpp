@@ -159,3 +159,7 @@ void fit_local_arr(const string &name){
     dim_param.resize(dim_num + 2);
     fit_local_arr(name, 0, sub_arr_size[0] - 1, 1);
 }
+
+int arr_dim_num(){
+    return arr_size.size() - 1;
+}

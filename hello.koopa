@@ -1,37 +1,191 @@
-  .data
-  .globl arr_1
-arr_1:
-  .zero 262144
-  .text
-  .globl main
-main:
-  addi  sp, sp, -16400
-entry_main:
-  addi  t0, sp, 16384
-  addi  t1, sp, 0
-br_0_zeroinit:
-  sw    x0, 0(t1)
-  addi  t1, t1, 4
-  xor   t2, t1, t0
-  bnez  t2, br_0_zeroinit
-  addi  t1, sp, 0
-  li    t0, 4
-  mul   t0, t0, x0
-  add   t0, t0, t1
-  sw    t0, 16384(sp)
-  li    t0, 1
-  lw    t1, 16384(sp)
-  sw    t0, 0(t1)
-  addi  t1, sp, 0
-  li    t0, 4
-  mul   t0, t0, x0
-  add   t0, t0, t1
-  sw    t0, 16388(sp)
-  lw    t0, 16388(sp)
-  lw    t1, 0(t0)
-  sw    t1, 16392(sp)
-  lw    t0, 16392(sp)
-  xor   a0, t0, x0
-  addi  sp, sp, 16400
-  ret
+decl @getint(): i32
+decl @getch(): i32
+decl @getarray(*i32): i32
+decl @putint(i32)
+decl @putch(i32)
+decl @putarray(i32, *i32)
+decl @starttime()
+decl @stoptime()
+global @n_1 = alloc i32, 0
+fun @counting_sort(%ini_arr_2_param: *i32, %sorted_arr_2_param: *i32, %n_2_param: i32): i32{
+%entry_counting_sort:
+  @ini_arr_2 = alloc *i32
+  store %ini_arr_2_param, @ini_arr_2
+  @sorted_arr_2 = alloc *i32
+  store %sorted_arr_2_param, @sorted_arr_2
+  @n_2 = alloc i32
+  store %n_2_param, @n_2
+  @count_arr_3 = alloc [i32, 10]
+  store zeroinit, @count_arr_3
+  @i_3 = alloc i32
+  @j_3 = alloc i32
+  @k_3 = alloc i32
+  store 0, @k_3
+  store 0, @i_3
+  store 0, @j_3
+  jump %while_head0
+%while_head0:
+  %4 = load @k_3
+  %5 = lt %4, 10
+  br %5, %while_body0_0, %while_end0
+%while_body0_0:
+  %7 = load @k_3
+  @ptr_8_arr = getelemptr @count_arr_3, %7
+  store 0, @ptr_8_arr
+  %13 = load @k_3
+  %14 = add %13, 1
+  store %14, @k_3
+  jump %while_head0
+%while_end0:
+  jump %while_head1
+%while_head1:
+  %16 = load @i_3
+  %18 = load @n_2
+  %19 = lt %16, %18
+  br %19, %while_body1_0, %while_end1
+%while_body1_0:
+  %23 = load @ini_arr_2
+  %21 = load @i_3
+  @ptr_22_arr = getptr %23, %21
+  %25 = load @ptr_22_arr
+  @ptr_26_arr = getelemptr @count_arr_3, %25
+  %32 = load @ini_arr_2
+  %30 = load @i_3
+  @ptr_31_arr = getptr %32, %30
+  %34 = load @ptr_31_arr
+  @ptr_35_arr = getelemptr @count_arr_3, %34
+  %38 = load @ptr_35_arr
+  %39 = add %38, 1
+  store %39, @ptr_26_arr
+  %42 = load @i_3
+  %43 = add %42, 1
+  store %43, @i_3
+  jump %while_head1
+%while_end1:
+  store 1, @k_3
+  jump %while_head2
+%while_head2:
+  %46 = load @k_3
+  %47 = lt %46, 10
+  br %47, %while_body2_0, %while_end2
+%while_body2_0:
+  %49 = load @k_3
+  @ptr_50_arr = getelemptr @count_arr_3, %49
+  %54 = load @k_3
+  @ptr_55_arr = getelemptr @count_arr_3, %54
+  %58 = load @ptr_55_arr
+  %60 = load @k_3
+  %61 = sub %60, 1
+  @ptr_62_arr = getelemptr @count_arr_3, %61
+  %65 = load @ptr_62_arr
+  %66 = add %58, %65
+  store %66, @ptr_50_arr
+  %69 = load @k_3
+  %70 = add %69, 1
+  store %70, @k_3
+  jump %while_head2
+%while_end2:
+  %73 = load @n_2
+  store %73, @j_3
+  jump %while_head3
+%while_head3:
+  %75 = load @j_3
+  %76 = gt %75, 0
+  br %76, %while_body3_0, %while_end3
+%while_body3_0:
+  %81 = load @ini_arr_2
+  %78 = load @j_3
+  %79 = sub %78, 1
+  @ptr_80_arr = getptr %81, %79
+  %83 = load @ptr_80_arr
+  @ptr_84_arr = getelemptr @count_arr_3, %83
+  %91 = load @ini_arr_2
+  %88 = load @j_3
+  %89 = sub %88, 1
+  @ptr_90_arr = getptr %91, %89
+  %93 = load @ptr_90_arr
+  @ptr_94_arr = getelemptr @count_arr_3, %93
+  %97 = load @ptr_94_arr
+  %98 = sub %97, 1
+  store %98, @ptr_84_arr
+  %111 = load @sorted_arr_2
+  %103 = load @ini_arr_2
+  %100 = load @j_3
+  %101 = sub %100, 1
+  @ptr_102_arr = getptr %103, %101
+  %105 = load @ptr_102_arr
+  @ptr_106_arr = getelemptr @count_arr_3, %105
+  %109 = load @ptr_106_arr
+  @ptr_110_arr = getptr %111, %109
+  %117 = load @ini_arr_2
+  %114 = load @j_3
+  %115 = sub %114, 1
+  @ptr_116_arr = getptr %117, %115
+  %119 = load @ptr_116_arr
+  store %119, @ptr_110_arr
+  %122 = load @j_3
+  %123 = sub %122, 1
+  store %123, @j_3
+  jump %while_head3
+%while_end3:
+  ret 0
+}
+fun @main(): i32{
+%entry_main:
+  store 10, @n_1
+  @a_13 = alloc [i32, 10]
+  store zeroinit, @a_13
+  @ptr_125_arr = getelemptr @a_13, 0
+  store 4, @ptr_125_arr
+  @ptr_128_arr = getelemptr @a_13, 1
+  store 3, @ptr_128_arr
+  @ptr_131_arr = getelemptr @a_13, 2
+  store 9, @ptr_131_arr
+  @ptr_134_arr = getelemptr @a_13, 3
+  store 2, @ptr_134_arr
+  @ptr_137_arr = getelemptr @a_13, 4
+  store 0, @ptr_137_arr
+  @ptr_140_arr = getelemptr @a_13, 5
+  store 1, @ptr_140_arr
+  @ptr_143_arr = getelemptr @a_13, 6
+  store 6, @ptr_143_arr
+  @ptr_146_arr = getelemptr @a_13, 7
+  store 5, @ptr_146_arr
+  @ptr_149_arr = getelemptr @a_13, 8
+  store 7, @ptr_149_arr
+  @ptr_152_arr = getelemptr @a_13, 9
+  store 8, @ptr_152_arr
+  @i_13 = alloc i32
+  store 0, @i_13
+  @b_13 = alloc [i32, 10]
+  store zeroinit, @b_13
+  %157 = getelemptr @a_13, 0 
+  %159 = getelemptr @b_13, 0 
+  %162 = load @n_1
+  %163 = call @counting_sort(%157, %159, %162)
+  store %163, @i_13
+  jump %while_head4
+%while_head4:
+  %165 = load @i_13
+  %167 = load @n_1
+  %168 = lt %165, %167
+  br %168, %while_body4_0, %while_end4
+%while_body4_0:
+  @tmp_15 = alloc i32
+  %171 = load @i_13
+  @ptr_172_arr = getelemptr @b_13, %171
+  %175 = load @ptr_172_arr
+  store %175, @tmp_15
+  %177 = load @tmp_15
+  call @putint(%177)
+  store 10, @tmp_15
+  %181 = load @tmp_15
+  call @putch(%181)
+  %185 = load @i_13
+  %186 = add %185, 1
+  store %186, @i_13
+  jump %while_head4
+%while_end4:
+  ret 0
+}
 
