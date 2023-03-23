@@ -47,6 +47,49 @@ string realloc_reg(const std::string &src, const std::string &dst){
     return dst;
 }
 
+void fixed_addi(const std::string &dst, const std::string &src, int val){
+    if (-2048 <= val && val <= 2047)
+        cout << "  addi  " << dst << ", " << src << ", " << val << endl;
+    else{
+        string cur = alloc_reg();
+        cout << "  li    " << cur << ", " << val << endl;
+        cout << "  add   " << dst << ", " << src << ", " << cur << endl;
+        remove_reg();
+    }
+} 
+
+void fixed_lw(const std::string &src, const std::string &addr){
+    int i = 0;
+    while (addr[i] >= '0' && addr[i] <= '9') ++i;
+    int shift = atoi(addr.substr(0, i).c_str());
+    string reg = addr.substr(i + 1, addr.length() - i - 2);
+    if (-2048 <= shift && shift <= 2047)
+        cout << "  lw    " << src << ", " << addr << endl;
+    else{
+        string cur = alloc_reg();
+        cout << "  li    " << cur << ", " << shift << endl;
+        cout << "  add   " << cur << ", " << cur << ", " << reg << endl;
+        cout << "  lw    " << src << ", 0(" << cur << ")" << endl;
+        remove_reg();
+    }
+}
+
+void fixed_sw(const std::string &src, const std::string &addr){
+    int i = 0;
+    while (addr[i] >= '0' && addr[i] <= '9') ++i;
+    int shift = atoi(addr.substr(0, i).c_str());
+    string reg = addr.substr(i + 1, addr.length() - i - 2);
+    if (-2048 <= shift && shift <= 2047)
+        cout << "  sw    " << src << ", " << addr << endl;
+    else{
+        string cur = alloc_reg();
+        cout << "  li    " << cur << ", " << shift << endl;
+        cout << "  add   " << cur << ", " << cur << ", " << reg << endl;
+        cout << "  sw    " << src << ", 0(" << cur << ")" << endl;
+        remove_reg();
+    }
+}
+
 /* 
   map the result of value(the address of the value in raw program)
    , to the name of register who save it.

@@ -6,7 +6,131 @@ decl @putch(i32)
 decl @putarray(i32, *i32)
 decl @starttime()
 decl @stoptime()
+global @n_1 = alloc i32, 0
+fun @bubblesort(%arr_2_param: *i32): i32{
+%entry_bubblesort:
+  @arr_2 = alloc *i32
+  store %arr_2_param, @arr_2
+  @i_3 = alloc i32
+  @j_3 = alloc i32
+  store 0, @i_3
+  jump %while_head2
+%while_head2:
+  %2 = load @i_3
+  %4 = load @n_1
+  %5 = sub %4, 1
+  %6 = lt %2, %5
+  br %6, %while_body2_0, %while_end2
+%while_body2_0:
+  store 0, @j_3
+  jump %while_head1
+%while_head1:
+  %9 = load @j_3
+  %11 = load @n_1
+  %13 = load @i_3
+  %14 = sub %11, %13
+  %15 = sub %14, 1
+  %16 = lt %9, %15
+  br %16, %while_body1_0, %while_end1
+%while_body1_0:
+  %20 = load @arr_2
+  %18 = load @j_3
+  @ptr_19_arr = getptr %20, %18
+  %22 = load @ptr_19_arr
+  %27 = load @arr_2
+  %24 = load @j_3
+  %25 = add %24, 1
+  @ptr_26_arr = getptr %27, %25
+  %29 = load @ptr_26_arr
+  %30 = gt %22, %29
+  br %30, %then0, %endif0
+%then0:
+  @tmp_9 = alloc i32
+  %36 = load @arr_2
+  %33 = load @j_3
+  %34 = add %33, 1
+  @ptr_35_arr = getptr %36, %34
+  %38 = load @ptr_35_arr
+  store %38, @tmp_9
+  %43 = load @arr_2
+  %40 = load @j_3
+  %41 = add %40, 1
+  @ptr_42_arr = getptr %43, %41
+  %48 = load @arr_2
+  %46 = load @j_3
+  @ptr_47_arr = getptr %48, %46
+  %50 = load @ptr_47_arr
+  store %50, @ptr_42_arr
+  %54 = load @arr_2
+  %52 = load @j_3
+  @ptr_53_arr = getptr %54, %52
+  %57 = load @tmp_9
+  store %57, @ptr_53_arr
+  jump %endif0
+%endif0:
+  %60 = load @j_3
+  %61 = add %60, 1
+  store %61, @j_3
+  jump %while_head1
+%while_end1:
+  %64 = load @i_3
+  %65 = add %64, 1
+  store %65, @i_3
+  jump %while_head2
+%while_end2:
+  ret 0
+}
 fun @main(): i32{
 %entry_main:
-  @a_3 = alloc [i32, 10]
-  store zeroinit, @a_3
+  store 10, @n_1
+  @a_11 = alloc [i32, 10]
+  store zeroinit, @a_11
+  @ptr_67_arr = getelemptr @a_11, 0
+  store 4, @ptr_67_arr
+  @ptr_70_arr = getelemptr @a_11, 1
+  store 3, @ptr_70_arr
+  @ptr_73_arr = getelemptr @a_11, 2
+  store 9, @ptr_73_arr
+  @ptr_76_arr = getelemptr @a_11, 3
+  store 2, @ptr_76_arr
+  @ptr_79_arr = getelemptr @a_11, 4
+  store 0, @ptr_79_arr
+  @ptr_82_arr = getelemptr @a_11, 5
+  store 1, @ptr_82_arr
+  @ptr_85_arr = getelemptr @a_11, 6
+  store 6, @ptr_85_arr
+  @ptr_88_arr = getelemptr @a_11, 7
+  store 5, @ptr_88_arr
+  @ptr_91_arr = getelemptr @a_11, 8
+  store 7, @ptr_91_arr
+  @ptr_94_arr = getelemptr @a_11, 9
+  store 8, @ptr_94_arr
+  @i_11 = alloc i32
+  %98 = getelemptr @a_11, 0 
+  %100 = call @bubblesort(%98)
+  store %100, @i_11
+  jump %while_head3
+%while_head3:
+  %102 = load @i_11
+  %104 = load @n_1
+  %105 = lt %102, %104
+  br %105, %while_body3_0, %while_end3
+%while_body3_0:
+  @tmp_13 = alloc i32
+  %108 = load @i_11
+  @ptr_109_arr = getelemptr @a_11, %108
+  %112 = load @ptr_109_arr
+  store %112, @tmp_13
+  %114 = load @tmp_13
+  call @putint(%114)
+  store 10, @tmp_13
+  %118 = load @tmp_13
+  call @putch(%118)
+  %122 = load @i_11
+  %123 = add %122, 1
+  store %123, @i_11
+  jump %while_head3
+%while_end3:
+  ret 0
+}
+

@@ -122,8 +122,10 @@ class FuncDefAST: public BaseAST{
             alloc_block();
             block -> DumpIR();
             if (!block_back().fin){
-                assert(func_type -> ExpId() == ""); //void type
-                cout << "  ret" << endl;
+                if (func_type -> ExpId() == "")//void type
+                    cout << "  ret" << endl;
+                else//int type
+                    cout << "  ret 0" << endl;
                 block_back().fin = true;
             }
             remove_block();
@@ -605,7 +607,6 @@ class ConstInitValElemAST: public BaseAST{
         std::unique_ptr<BaseAST> val;
         bool is_arr;
         void DumpIR() const override{
-            val -> DumpIR();
             if (!is_arr)
                 insert_arr_val(to_string(val -> ExpVal()));
         }
@@ -753,9 +754,14 @@ class InitValElemAST: public BaseAST{
         bool is_arr;
         void DumpIR() const override{
             //cout << "InitValElem" << endl;
-            val -> DumpIR();
-            if (!is_arr)
-                insert_arr_val(val -> ExpId());
+            if (!is_arr){
+                if (is_global_decl)
+                    insert_arr_val(to_string(val -> ExpVal()));
+                else{   
+                    val -> DumpIR();
+                    insert_arr_val(val -> ExpId());
+                }
+            }
         }
 };
 /* ------------------ Array Params --------------- */
