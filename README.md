@@ -74,3 +74,9 @@ make DEBUG=0 BUILD_DIR="build目录" LIB_DIR="libkoopa目录" INC_DIR="libkoopa�
 如需链接 `libkoopa`, 你的 `Makefile` 应当处理 `LIB_DIR` 和 `INC_DIR`.
 
 模板中的 `Makefile` 已经处理了上述内容, 你无需额外关心.
+
+## 注释
+
+似乎因为下发代码的缘故，在处理带初值的大数组初始化/长函数的时候，有概率会挂掉。
+
+目前已知初始化的bug由Lv2下发的预处理器引起，本人代码没有问题。
