@@ -609,6 +609,8 @@ class ConstInitValElemAST: public BaseAST{
         void DumpIR() const override{
             if (!is_arr)
                 insert_arr_val(to_string(val -> ExpVal()));
+            else
+                val -> DumpIR();
         }
 };
 
@@ -762,6 +764,8 @@ class InitValElemAST: public BaseAST{
                     insert_arr_val(val -> ExpId());
                 }
             }
+            else
+                val -> DumpIR();
         }
 };
 /* ------------------ Array Params --------------- */
@@ -1479,7 +1483,7 @@ class LOrExpAST2: public BaseAST{
             return "%" + to_string(exp_id);
         }
         int ExpVal() const override{
-            return l_or_exp -> ExpVal() && l_and_exp -> ExpVal();
+            return l_or_exp -> ExpVal() || l_and_exp -> ExpVal();
         }
 };
 

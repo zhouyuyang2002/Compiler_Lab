@@ -74,6 +74,7 @@ void left_bracket(){
         initval_ptr.push_back(arr_ptr - sub_arr_size[dim]);
     else
         initval_ptr.push_back(arr_ptr);
+    //cout << "LB " << dim << ' ' << arr_ptr << ' ' << arr_ptr_ub <<
     initval_size.push_back(dim);
     arr_ptr_ub = initval_ptr.back() + sub_arr_size[dim];
 }
